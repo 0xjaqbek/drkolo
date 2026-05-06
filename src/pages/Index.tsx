@@ -61,19 +61,6 @@ const Index = () => {
                 </a>
               </Button>
             </div>
-
-            <div className="mt-16 grid grid-cols-2 md:grid-cols-3 gap-8 max-w-2xl">
-              {[
-                { k: "15+", v: "lat doświadczenia" },
-                { k: "5000+", v: "naprawionych rowerów" },
-                { k: "100%", v: "gwarancji jakości" },
-              ].map((s) => (
-                <div key={s.v}>
-                  <div className="font-display text-3xl md:text-4xl font-bold text-accent">{s.k}</div>
-                  <div className="text-sm text-white/70 mt-1">{s.v}</div>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </section>
