@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Phone, MapPin, Wrench, Bike, Cog, ArrowUpRight, Clock, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -38,6 +39,7 @@ const Index = () => {
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
             <a href="#uslugi" className="hover:text-accent transition-colors">Usługi</a>
             <a href="#o-nas" className="hover:text-accent transition-colors">O nas</a>
+            <Link to="/cennik" className="hover:text-accent transition-colors">Cennik</Link>
             <a href="#kontakt" className="hover:text-accent transition-colors">Kontakt</a>
           </nav>
           <div className="flex items-center gap-2">
