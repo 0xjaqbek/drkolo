@@ -1,7 +1,6 @@
-import { Link } from "react-router-dom";
 import { Phone, MapPin, Wrench, Bike, Cog, ArrowUpRight, Clock, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { SiteHeader } from "@/components/SiteHeader";
 import heroImg from "@/assets/hero-bike.jpg";
 import mechanicImg from "@/assets/service-mechanic.jpg";
 
@@ -20,28 +19,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
-      <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-background/70 border-b border-border">
-        <div className="container flex items-center justify-between h-16">
-          <a href="#top" className="flex items-center gap-2 font-display font-bold text-lg">
-            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-accent text-accent-foreground">
-              <Bike className="h-4 w-4" />
-            </span>
-            Dr Koło
-          </a>
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
-            <a href="#uslugi" className="hover:text-accent transition-colors">Usługi</a>
-            <a href="#o-nas" className="hover:text-accent transition-colors">O nas</a>
-            <Link to="/cennik" className="hover:text-accent transition-colors">Cennik</Link>
-            <a href="#kontakt" className="hover:text-accent transition-colors">Kontakt</a>
-          </nav>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button asChild size="sm" className="hidden sm:inline-flex bg-accent text-accent-foreground hover:bg-accent/90 rounded-full">
-              <a href={`tel:${PHONE_TEL}`}><Phone className="h-3.5 w-3.5 mr-1.5" />Zadzwoń</a>
-            </Button>
-          </div>
-        </div>
-      </header>
+      <SiteHeader activePage="home" />
 
       {/* Hero */}
       <section id="top" className="relative pt-16 min-h-screen flex items-center overflow-hidden">
