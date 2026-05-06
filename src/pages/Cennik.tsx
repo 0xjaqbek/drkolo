@@ -1,14 +1,13 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
-  Phone, Bike, Wrench, Cog, ArrowLeft,
+  Bike, Wrench, Cog, ArrowLeft,
   ClipboardList, Settings, CircleDot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { SiteHeader } from "@/components/SiteHeader";
 
 const PHONE = "511 061 221";
-const PHONE_TEL = "+48511061221";
 const ADDRESS = "Kielnieńska 111, Gdańsk 80-299";
 
 const categories = [
@@ -80,28 +79,7 @@ const Cennik = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
-      <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-background/70 border-b border-border">
-        <div className="container flex items-center justify-between h-16">
-          <Link to="/" className="flex items-center gap-2 font-display font-bold text-lg">
-            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-accent text-accent-foreground">
-              <Bike className="h-4 w-4" />
-            </span>
-            Dr Koło
-          </Link>
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
-            <Link to="/#uslugi" className="hover:text-accent transition-colors">Usługi</Link>
-            <Link to="/#o-nas" className="hover:text-accent transition-colors">O nas</Link>
-            <span className="text-accent font-semibold">Cennik</span>
-            <Link to="/#kontakt" className="hover:text-accent transition-colors">Kontakt</Link>
-          </nav>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button asChild size="sm" className="hidden sm:inline-flex bg-accent text-accent-foreground hover:bg-accent/90 rounded-full">
-              <a href={`tel:${PHONE_TEL}`}><Phone className="h-3.5 w-3.5 mr-1.5" />Zadzwoń</a>
-            </Button>
-          </div>
-        </div>
-      </header>
+      <SiteHeader activePage="cennik" />
 
       {/* Content */}
       <main className="pt-16">
