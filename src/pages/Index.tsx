@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Phone, MapPin, Wrench, Bike, Cog, ArrowUpRight, Clock, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,13 +10,6 @@ const PHONE_TEL = "+48511061221";
 const ADDRESS = "Kielnieńska 111, Gdańsk 80-299";
 
 const Index = () => {
-  useEffect(() => {
-    document.title = "Dr Koło — Profesjonalny Serwis Rowerowy | Gdańsk Kartuzy";
-    const desc = "Dr Koło — profesjonalny serwis rowerowy w Gdańsku i Kartuzach. Naprawa rowerów każdego typu oraz amortyzacji. Tel. 511 061 221.";
-    let m = document.querySelector('meta[name="description"]');
-    if (!m) { m = document.createElement("meta"); m.setAttribute("name", "description"); document.head.appendChild(m); }
-    m.setAttribute("content", desc);
-  }, []);
 
   const services = [
     { icon: Bike, title: "Rowery każdego typu", desc: "MTB, szosowe, gravel, miejskie, dziecięce, elektryczne — kompleksowy serwis." },
@@ -58,6 +50,7 @@ const Index = () => {
           alt="Profesjonalny serwis amortyzatora rowerowego"
           width={1920}
           height={1280}
+          fetchPriority="high"
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-hero" />

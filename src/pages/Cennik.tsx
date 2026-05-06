@@ -65,7 +65,16 @@ const categories = [
 
 const Cennik = () => {
   useEffect(() => {
-    document.title = "Cennik — Dr Koło: Serwis Rowerowy";
+    document.title = "Cennik usług — Dr Koło: Serwis Rowerowy Gdańsk";
+    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    if (!canonical) { canonical = document.createElement("link"); canonical.rel = "canonical"; document.head.appendChild(canonical); }
+    canonical.href = "https://drkolo.pl/cennik";
+    let desc = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+    if (desc) desc.setAttribute("content", "Cennik serwisu rowerowego Dr Koło — Gdańsk, Kartuzy. Przeglądy, naprawy, serwis amortyzatorów, koła, napęd. Sprawdź aktualne ceny.");
+    return () => {
+      if (canonical) canonical.href = "https://drkolo.pl/";
+      if (desc) desc.setAttribute("content", "Dr Koło — profesjonalny serwis rowerowy w Gdańsku i Kartuzach. Naprawa rowerów MTB, szosowych, gravel, elektrycznych. Serwis amortyzatorów. Tel. 511 061 221.");
+    };
   }, []);
 
   return (
