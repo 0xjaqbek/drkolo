@@ -69,7 +69,7 @@ const Index = () => {
               <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
               Kartuzy · Gdańsk
             </div>
-            <h1 className="font-display font-bold text-5xl md:text-7xl lg:text-8xl text-white leading-[0.95] text-balance">
+            <h1 className="font-display font-bold text-[clamp(2.25rem,12vw,3rem)] md:text-7xl lg:text-8xl text-white leading-[0.95] tracking-tight text-balance">
               Profesjonalny <br />
               <span className="text-accent">serwis rowerowy</span>
             </h1>
