@@ -40,7 +40,7 @@ export const SiteHeader = ({ activePage }: SiteHeaderProps) => {
         )}
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
+        <nav aria-label="Nawigacja główna" className="hidden md:flex items-center gap-8 text-sm font-medium">
           {activePage === "home" ? (
             <>
               <a href="#uslugi" className="hover:text-accent transition-colors">Usługi</a>
@@ -94,7 +94,7 @@ export const SiteHeader = ({ activePage }: SiteHeaderProps) => {
           menuOpen ? "max-h-80 opacity-100" : "max-h-0 opacity-0"
         }`}
       >
-        <nav className="container pb-4">
+        <nav aria-label="Nawigacja mobilna" className="container pb-4">
           {activePage === "home" ? (
             <>
               <a href="#uslugi" onClick={close} className={linkClass}>Usługi</a>
