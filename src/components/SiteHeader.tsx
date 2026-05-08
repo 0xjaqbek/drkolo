@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Phone, Bike, Menu, X } from "lucide-react";
+import { Phone, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Logo } from "@/components/Logo";
 
 const PHONE = "511 061 221";
 const PHONE_TEL = "+48511061221";
@@ -24,18 +25,12 @@ export const SiteHeader = ({ activePage }: SiteHeaderProps) => {
       <div className="container flex items-center justify-between h-16">
         {/* Logo */}
         {activePage === "home" ? (
-          <a href="#top" className="flex items-center gap-2 font-display font-bold text-lg">
-            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-accent text-accent-foreground">
-              <Bike className="h-4 w-4" />
-            </span>
-            Dr Koło
+          <a href="#top">
+            <Logo className="h-8" />
           </a>
         ) : (
-          <Link to="/" className="flex items-center gap-2 font-display font-bold text-lg">
-            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-accent text-accent-foreground">
-              <Bike className="h-4 w-4" />
-            </span>
-            Dr Koło
+          <Link to="/">
+            <Logo className="h-8" />
           </Link>
         )}
 

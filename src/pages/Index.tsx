@@ -1,6 +1,7 @@
 import { Phone, MapPin, Wrench, Bike, Cog, ArrowUpRight, Clock, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/SiteHeader";
+import { Logo } from "@/components/Logo";
 import heroImg from "@/assets/hero-bike.jpg";
 import mechanicImg from "@/assets/service-mechanic.jpg";
 
@@ -186,12 +187,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="py-10 border-t border-border">
         <div className="container flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2 font-display font-bold text-foreground">
-            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-accent text-accent-foreground">
-              <Bike className="h-3.5 w-3.5" />
-            </span>
-            Dr Koło
-          </div>
+          <Logo className="h-7" />
           <div>{ADDRESS} · {PHONE}</div>
           <div>© {new Date().getFullYear()} Dr Koło. Wszelkie prawa zastrzeżone.</div>
         </div>

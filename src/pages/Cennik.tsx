@@ -1,13 +1,15 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
-  Bike, Wrench, Cog, ArrowLeft,
+  Phone, Wrench, Cog, ArrowLeft,
   ClipboardList, Settings, CircleDot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/SiteHeader";
+import { Logo } from "@/components/Logo";
 
 const PHONE = "511 061 221";
+const PHONE_TEL = "+48511061221";
 const ADDRESS = "Kielnieńska 111, Gdańsk 80-299";
 
 const categories = [
@@ -68,7 +70,7 @@ const Cennik = () => {
     let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
     if (!canonical) { canonical = document.createElement("link"); canonical.rel = "canonical"; document.head.appendChild(canonical); }
     canonical.href = "https://drkolo.pl/cennik";
-    let desc = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+    const desc = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     if (desc) desc.setAttribute("content", "Cennik serwisu rowerowego Dr Koło — Gdańsk, Kartuzy. Przeglądy, naprawy, serwis amortyzatorów, koła, napęd. Sprawdź aktualne ceny.");
     return () => {
       if (canonical) canonical.href = "https://drkolo.pl/";
@@ -148,12 +150,7 @@ const Cennik = () => {
       {/* Footer */}
       <footer className="py-10 border-t border-border">
         <div className="container flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2 font-display font-bold text-foreground">
-            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-accent text-accent-foreground">
-              <Bike className="h-3.5 w-3.5" />
-            </span>
-            Dr Koło
-          </div>
+          <Logo className="h-7" />
           <div>{ADDRESS} · {PHONE}</div>
           <div>© {new Date().getFullYear()} Dr Koło. Wszelkie prawa zastrzeżone.</div>
         </div>
