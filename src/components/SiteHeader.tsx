@@ -8,7 +8,7 @@ const PHONE = "511 061 221";
 const PHONE_TEL = "+48511061221";
 
 interface SiteHeaderProps {
-  activePage: "home" | "cennik";
+  activePage?: "home" | "cennik";
 }
 
 export const SiteHeader = ({ activePage }: SiteHeaderProps) => {

@@ -43,12 +43,16 @@ export default function ZlecenieView() {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
-      <div className="max-w-2xl mx-auto p-4 space-y-6 pb-12">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold">{zlecenie.bike_model}</h1>
-            <p className="text-sm text-muted-foreground font-mono">#{zlecenie.hash}</p>
-          </div>
+      <div className="max-w-2xl mx-auto p-4 pt-20 space-y-6 pb-12">
+        <div>
+          <h1 className="text-xl font-bold">{zlecenie.bike_model}</h1>
+          <p className="text-sm text-muted-foreground font-mono">#{zlecenie.hash}</p>
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+            {authenticated ? 'Status (kliknij aby zmienić)' : 'Status'}
+          </p>
           <StatusBadge
             status={zlecenie.status as ZlecenieStatus}
             onStatusChange={authenticated ? s => updateStatus.mutate(s) : undefined}
@@ -56,7 +60,7 @@ export default function ZlecenieView() {
         </div>
 
         {zlecenie.status === 'gotowe' && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center text-green-700 font-medium">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center text-green-700 font-medium dark:bg-green-950 dark:border-green-800 dark:text-green-300">
             Twój rower jest gotowy do odbioru!
           </div>
         )}

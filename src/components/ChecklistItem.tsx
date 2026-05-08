@@ -28,7 +28,7 @@ export function ChecklistItem({
 
   return (
     <div
-      className={`border rounded-lg p-3 ${item.is_done ? 'bg-green-50 border-green-200' : 'bg-white border-border'}`}
+      className={`border rounded-lg p-3 ${item.is_done ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' : 'bg-card border-border'}`}
     >
       <div className="flex items-center gap-3">
         {isEditing ? (
@@ -39,7 +39,7 @@ export function ChecklistItem({
         ) : (
           <div
             className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 ${
-              item.is_done ? 'bg-green-500 border-green-500' : 'border-gray-300'
+              item.is_done ? 'bg-green-500 border-green-500' : 'border-muted-foreground/40'
             }`}
           >
             {item.is_done && <span className="text-white text-xs leading-none">✓</span>}
@@ -77,7 +77,7 @@ export function ChecklistItem({
         <div className="mt-3 ml-8 space-y-3">
           {updates.map(update => (
             <div key={update.id} className="text-sm">
-              {update.note && <p className="text-gray-700">{update.note}</p>}
+              {update.note && <p className="text-foreground">{update.note}</p>}
               <PhotoGallery photos={update.update_photos} />
               <p className="text-xs text-muted-foreground mt-1">
                 {format(new Date(update.created_at), 'd MMM, HH:mm', { locale: pl })}
