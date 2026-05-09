@@ -118,7 +118,7 @@ export function ZlecenieList({ onBack }: ZlecenieListProps) {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
-      <div className="max-w-4xl mx-auto p-4 space-y-6 pb-12">
+      <div className="max-w-4xl mx-auto p-4 pt-20 space-y-6 pb-12">
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">

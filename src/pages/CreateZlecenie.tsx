@@ -188,7 +188,7 @@ export default function CreateZlecenie() {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
-      <div className="max-w-2xl mx-auto p-4 space-y-6 pb-12">
+      <div className="max-w-2xl mx-auto p-4 pt-20 space-y-6 pb-12">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => setMode('choose')} className="shrink-0">
             <X className="h-5 w-5" />
