@@ -11,7 +11,8 @@ import {
   useWorkingHours, 
   useAppointmentsByDate, 
   useBlockedTimes, 
-  useCreateAppointment 
+  useCreateAppointment,
+  usePendingAppointments
 } from '@/hooks/useAppointments';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +51,7 @@ export default function KalendarzAdmin() {
   
   const { data: mAppointments = [] } = useAppointmentsByDate(mDateStr);
   const { data: mBlockedTimes = [] } = useBlockedTimes(mDateStr);
+  const { data: pendingAppointments = [] } = usePendingAppointments();
   
   const createMutation = useCreateAppointment();
 
@@ -142,6 +144,20 @@ export default function KalendarzAdmin() {
           </TabsList>
           
           <TabsContent value="calendar" className="space-y-6">
+            
+            {pendingAppointments.length > 0 && (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 shadow-sm mb-6">
+                <h3 className="font-semibold text-lg text-yellow-700 flex items-center gap-2 mb-4">
+                  Oczekujące zapytania ({pendingAppointments.length})
+                </h3>
+                <div className="grid gap-4">
+                  {pendingAppointments.map(app => (
+                    <AppointmentCard key={app.id} appointment={app} />
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid md:grid-cols-[300px_1fr] gap-6 items-start">
               <div className="bg-card border rounded-lg p-4 shadow-sm sticky top-24">
                 <Calendar

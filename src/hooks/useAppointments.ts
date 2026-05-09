@@ -101,6 +101,22 @@ export function useAppointmentsByDate(date: string) {
   });
 }
 
+export function usePendingAppointments() {
+  return useQuery({
+    queryKey: ['appointments', 'pending'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('service_appointments')
+        .select('*')
+        .eq('status', 'zapytanie')
+        .order('appointment_date')
+        .order('arrival_time');
+      if (error) throw error;
+      return (data ?? []) as ServiceAppointment[];
+    },
+  });
+}
+
 export function useAppointmentsByRange(from: string, to: string) {
   return useQuery({
     queryKey: ['appointments', from, to],
