@@ -9,7 +9,7 @@ const PHONE = "511 061 221";
 const PHONE_TEL = "+48511061221";
 
 interface SiteHeaderProps {
-  activePage?: "home" | "cennik";
+  activePage?: "home" | "cennik" | "rezerwacja";
 }
 
 export const SiteHeader = ({ activePage }: SiteHeaderProps) => {
@@ -43,14 +43,25 @@ export const SiteHeader = ({ activePage }: SiteHeaderProps) => {
               <Link to="/cennik" className="hover:text-accent transition-colors">Cennik</Link>
               <a href="#kontakt" className="hover:text-accent transition-colors">Kontakt</a>
             </>
-          ) : (
+          ) : activePage === "cennik" ? (
             <>
               <Link to="/#uslugi" className="hover:text-accent transition-colors">Usługi</Link>
               <Link to="/#o-nas" className="hover:text-accent transition-colors">O nas</Link>
               <span className="text-accent font-semibold">Cennik</span>
               <Link to="/#kontakt" className="hover:text-accent transition-colors">Kontakt</Link>
             </>
+          ) : (
+            <>
+              <Link to="/#uslugi" className="hover:text-accent transition-colors">Usługi</Link>
+              <Link to="/#o-nas" className="hover:text-accent transition-colors">O nas</Link>
+              <Link to="/cennik" className="hover:text-accent transition-colors">Cennik</Link>
+              <Link to="/#kontakt" className="hover:text-accent transition-colors">Kontakt</Link>
+            </>
           )}
+          
+          <Button asChild size="sm" variant="outline" className="hidden lg:inline-flex border-accent text-accent hover:bg-accent hover:text-accent-foreground rounded-full">
+            <Link to="/rezerwacja">Umów wizytę</Link>
+          </Button>
         </nav>
 
         {/* Right controls */}
@@ -97,7 +108,7 @@ export const SiteHeader = ({ activePage }: SiteHeaderProps) => {
               <Link to="/cennik" onClick={close} className={linkClass}>Cennik</Link>
               <a href="#kontakt" onClick={close} className={linkClass}>Kontakt</a>
             </>
-          ) : (
+          ) : activePage === "cennik" ? (
             <>
               <Link to="/#uslugi" onClick={close} className={linkClass}>Usługi</Link>
               <Link to="/#o-nas" onClick={close} className={linkClass}>O nas</Link>
@@ -106,7 +117,17 @@ export const SiteHeader = ({ activePage }: SiteHeaderProps) => {
               </span>
               <Link to="/#kontakt" onClick={close} className={linkClass}>Kontakt</Link>
             </>
+          ) : (
+            <>
+              <Link to="/#uslugi" onClick={close} className={linkClass}>Usługi</Link>
+              <Link to="/#o-nas" onClick={close} className={linkClass}>O nas</Link>
+              <Link to="/cennik" onClick={close} className={linkClass}>Cennik</Link>
+              <Link to="/#kontakt" onClick={close} className={linkClass}>Kontakt</Link>
+            </>
           )}
+          <Link to="/rezerwacja" onClick={close} className="block py-3 text-sm font-bold text-accent border-b border-border/50">
+            Umów wizytę
+          </Link>
           <div className="flex items-center justify-between pt-3 mt-1 border-t border-border">
             <ThemeToggle />
             <Button

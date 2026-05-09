@@ -8,6 +8,8 @@ import Cennik from "./pages/Cennik.tsx";
 import CreateZlecenie from "./pages/CreateZlecenie.tsx";
 import ZlecenieView from "./pages/ZlecenieView.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import Rezerwacja from "./pages/Rezerwacja.tsx";
+import KalendarzAdmin from "./pages/KalendarzAdmin.tsx";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +24,8 @@ const App = () => (
           <Route path="/cennik" element={<Cennik />} />
           <Route path="/zlecenie" element={<CreateZlecenie />} />
           <Route path="/zlecenie/:hash" element={<ZlecenieView />} />
+          <Route path="/rezerwacja" element={<Rezerwacja />} />
+          <Route path="/kalendarz" element={<KalendarzAdmin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
