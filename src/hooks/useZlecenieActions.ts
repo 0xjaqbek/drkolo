@@ -97,3 +97,38 @@ export function useAddUpdate(hash: string, zlecenie_id: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['zlecenie', hash] }),
   });
 }
+
+export function useDeleteZlecenie() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('zlecenia')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['zlecenia_list'] }),
+  });
+}
+
+interface UpdateZlecenieInput {
+  id: string;
+  bike_model: string;
+  customer_phone: string;
+  status: ZlecenieStatus;
+}
+
+export function useUpdateZlecenie() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, bike_model, customer_phone, status }: UpdateZlecenieInput) => {
+      const { error } = await supabase
+        .from('zlecenia')
+        .update({ bike_model, customer_phone, status })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['zlecenia_list'] }),
+  });
+}

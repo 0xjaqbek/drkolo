@@ -4,16 +4,27 @@ import { useSession } from '@/hooks/useSession';
 import { useCatalog } from '@/hooks/useZlecenie';
 import { useCreateZlecenie } from '@/hooks/useZlecenieActions';
 import { CatalogPicker } from '@/components/CatalogPicker';
+import { ZlecenieList } from '@/components/ZlecenieList';
 import { SiteHeader } from '@/components/SiteHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { X, Plus } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { X, Plus, ListOrdered, FilePlus } from 'lucide-react';
+
+type Mode = 'choose' | 'create' | 'browse';
 
 export default function CreateZlecenie() {
   const { authenticated, login } = useSession();
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState(false);
+  const [mode, setMode] = useState<Mode>('choose');
   const [bikeModel, setBikeModel] = useState('');
   const [phone, setPhone] = useState('');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -54,6 +65,7 @@ export default function CreateZlecenie() {
     setCreatedPhone(phone.trim());
   };
 
+  // --- Password gate ---
   if (!authenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -80,6 +92,54 @@ export default function CreateZlecenie() {
     );
   }
 
+  // --- Choice modal (shown right after login) ---
+  if (mode === 'choose') {
+    return (
+      <Dialog open onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md [&>button]:hidden">
+          <DialogHeader>
+            <DialogTitle>Co chcesz zrobić?</DialogTitle>
+            <DialogDescription>
+              Wybierz jedną z opcji poniżej
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
+            <button
+              onClick={() => setMode('browse')}
+              className="group flex flex-col items-center gap-3 p-6 rounded-lg border border-border bg-card hover:border-accent hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
+            >
+              <div className="w-14 h-14 rounded-full bg-accent/10 text-accent flex items-center justify-center group-hover:bg-accent group-hover:text-accent-foreground transition-colors">
+                <ListOrdered className="h-6 w-6" />
+              </div>
+              <span className="font-semibold text-sm">Przeglądaj zlecenia</span>
+              <span className="text-xs text-muted-foreground text-center">
+                Lista istniejących zleceń
+              </span>
+            </button>
+            <button
+              onClick={() => setMode('create')}
+              className="group flex flex-col items-center gap-3 p-6 rounded-lg border border-border bg-card hover:border-accent hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
+            >
+              <div className="w-14 h-14 rounded-full bg-accent/10 text-accent flex items-center justify-center group-hover:bg-accent group-hover:text-accent-foreground transition-colors">
+                <FilePlus className="h-6 w-6" />
+              </div>
+              <span className="font-semibold text-sm">Utwórz zlecenie</span>
+              <span className="text-xs text-muted-foreground text-center">
+                Nowe zlecenie serwisowe
+              </span>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // --- Browse mode ---
+  if (mode === 'browse') {
+    return <ZlecenieList onBack={() => setMode('choose')} />;
+  }
+
+  // --- Created confirmation ---
   if (createdHash) {
     const link = `https://drkolo.pl/zlecenie/${createdHash}`;
     const smsBody = encodeURIComponent(
@@ -105,16 +165,36 @@ export default function CreateZlecenie() {
           >
             Otwórz zlecenie
           </Button>
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={() => {
+              setCreatedHash(null);
+              setCreatedPhone('');
+              setBikeModel('');
+              setPhone('');
+              setSelectedItems([]);
+              setMode('choose');
+            }}
+          >
+            Powrót do menu
+          </Button>
         </div>
       </div>
     );
   }
 
+  // --- Create form ---
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
       <div className="max-w-2xl mx-auto p-4 space-y-6 pb-12">
-        <h1 className="text-2xl font-bold">Nowe zlecenie</h1>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => setMode('choose')} className="shrink-0">
+            <X className="h-5 w-5" />
+          </Button>
+          <h1 className="text-2xl font-bold">Nowe zlecenie</h1>
+        </div>
 
         <div className="space-y-4">
           <div className="space-y-2">

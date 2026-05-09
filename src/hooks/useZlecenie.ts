@@ -2,6 +2,21 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { CatalogItem, Zlecenie, ZlecenieItem, ZlecenieUpdate } from '@/lib/types';
 
+export function useZlecenieList() {
+  return useQuery({
+    queryKey: ['zlecenia_list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('zlecenia')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Zlecenie[];
+    },
+    refetchInterval: 15000,
+  });
+}
+
 export function useZlecenie(hash: string) {
   return useQuery({
     queryKey: ['zlecenie', hash],
