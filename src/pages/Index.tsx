@@ -156,12 +156,12 @@ const Index = () => {
           <div className="grid md:grid-cols-2 gap-6">
             <a
               href={`tel:${PHONE_TEL}`}
-              className="group p-8 md:p-10 rounded-lg bg-accent text-accent-foreground hover:scale-[1.02] transition-transform duration-500"
+              className="group flex flex-col p-8 md:p-10 rounded-lg bg-accent text-accent-foreground hover:scale-[1.02] transition-transform duration-500"
             >
               <Phone className="h-8 w-8 mb-6" />
               <div className="text-sm font-medium opacity-70 uppercase tracking-wider mb-2">Telefon</div>
               <div className="font-display font-bold text-3xl md:text-5xl mb-4">{PHONE}</div>
-              <div className="inline-flex items-center text-sm font-medium">
+              <div className="inline-flex items-center text-sm font-medium mt-auto pt-4">
                 Zadzwoń teraz <ArrowUpRight className="h-4 w-4 ml-1 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
               </div>
             </a>
@@ -170,12 +170,24 @@ const Index = () => {
               href="https://maps.google.com/?q=Kielnieńska+111+Gdańsk"
               target="_blank"
               rel="noopener noreferrer"
-              className="group p-8 md:p-10 rounded-lg border border-white/15 hover:border-accent transition-colors"
+              className="group flex flex-col p-8 md:p-10 rounded-lg border border-white/15 hover:border-accent transition-colors"
             >
               <MapPin className="h-8 w-8 mb-6 text-accent" />
               <div className="text-sm font-medium opacity-70 uppercase tracking-wider mb-2">Adres</div>
               <div className="font-display font-bold text-2xl md:text-3xl mb-2">Kielnieńska 111</div>
-              <div className="text-lg opacity-80 mb-4">Gdańsk 80-299</div>
+              <div className="text-lg opacity-80 mb-6">Gdańsk 80-299</div>
+              
+              <div className="space-y-3 mb-8 mt-auto">
+                <div className="flex items-center gap-3 opacity-90">
+                  <Clock className="h-5 w-5 text-accent" />
+                  <span className="text-base">Pon - Pt: 10:00 - 19:00</span>
+                </div>
+                <div className="flex items-center gap-3 opacity-90">
+                  <Clock className="h-5 w-5 text-accent" />
+                  <span className="text-base">Sobota: 10:00 - 16:00</span>
+                </div>
+              </div>
+
               <div className="inline-flex items-center text-sm font-medium text-accent">
                 Otwórz w mapach <ArrowUpRight className="h-4 w-4 ml-1 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
               </div>
