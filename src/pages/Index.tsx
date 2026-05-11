@@ -305,7 +305,7 @@ const Index = () => {
             </div>
             <a
               href={`tel:${PHONE_TEL}`}
-              className="inline-flex items-center gap-2 text-sm text-accent font-medium tracking-wide hover:opacity-80 transition-opacity whitespace-nowrap"
+              className="inline-flex items-center gap-2 text-sm text-primary-foreground font-medium tracking-wide hover:opacity-80 transition-opacity whitespace-nowrap"
             >
               <Phone className="h-3.5 w-3.5" />
               Zadzwoń wcześniej
