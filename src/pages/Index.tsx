@@ -238,9 +238,8 @@ const Index = () => {
             <em className="italic font-normal">Zadzwoń lub wpadnij.</em>
           </h2>
 
-          <div className="grid md:grid-cols-2 gap-px bg-white/10">
+          <div className="grid md:grid-cols-3 gap-px bg-white/10">
             {/* Phone card */}
-
             <a
               href={`tel:${PHONE_TEL}`}
               className="group flex flex-col p-10 md:p-14 bg-accent text-accent-foreground hover:shadow-glow transition-shadow duration-500"
@@ -249,7 +248,7 @@ const Index = () => {
               <div className="text-xs font-medium opacity-60 uppercase tracking-[0.2em] mb-3">Telefon</div>
               <div
                 className="font-display font-bold leading-none tracking-[-0.02em] mb-8"
-                style={{ fontSize: "clamp(2rem, 6vw, 4rem)" }}
+                style={{ fontSize: "clamp(1.5rem, 4vw, 3rem)" }}
               >
                 {PHONE}
               </div>
@@ -258,7 +257,7 @@ const Index = () => {
               </div>
             </a>
 
-            {/* Address card */}
+            {/* Gdańsk address card */}
             <a
               href="https://maps.google.com/?q=Kielnieńska+111+Gdańsk"
               target="_blank"
@@ -266,14 +265,14 @@ const Index = () => {
               className="group flex flex-col p-10 md:p-14 bg-primary border-t-2 border-accent/40 hover:border-accent transition-colors duration-300"
             >
               <MapPin className="h-7 w-7 mb-8 text-accent opacity-70" />
-              <div className="text-xs font-medium opacity-60 uppercase tracking-[0.2em] mb-3">Adres</div>
+              <div className="text-xs font-medium opacity-60 uppercase tracking-[0.2em] mb-3">Gdańsk</div>
               <div
                 className="font-display font-bold leading-none tracking-[-0.02em] mb-2"
-                style={{ fontSize: "clamp(1.5rem, 4vw, 2.5rem)" }}
+                style={{ fontSize: "clamp(1.25rem, 3vw, 2rem)" }}
               >
                 Kielnieńska 111
               </div>
-              <div className="text-lg opacity-70 mb-8">Gdańsk 80-299</div>
+              <div className="text-base opacity-70 mb-8">Gdańsk 80-299</div>
 
               <div className="divide-y divide-white/10 mb-8">
                 <div className="flex items-center gap-3 py-3 opacity-80">
@@ -290,25 +289,32 @@ const Index = () => {
                 Otwórz w mapach →
               </div>
             </a>
-          </div>
 
-          {/* Kartuzy pickup strip */}
-          <div className="mt-px border-t border-white/10 flex flex-col sm:flex-row sm:items-center gap-4 px-10 py-6 bg-primary/80">
-            <div className="flex items-center gap-3 flex-1">
-              <MapPin className="h-4 w-4 text-accent flex-shrink-0 opacity-70" />
-              <div className="text-sm leading-relaxed">
-                <span className="font-medium text-primary-foreground/90 tracking-wide">Dowóz / odbiór · Kartuzy, ul. Słowackiego 36</span>
-                <span className="block text-primary-foreground/55 text-xs mt-0.5 tracking-wide">
-                  Wymagany wcześniejszy kontakt telefoniczny
-                </span>
-              </div>
-            </div>
+            {/* Kartuzy pickup card */}
             <a
               href={`tel:${PHONE_TEL}`}
-              className="inline-flex items-center gap-2 text-sm text-primary-foreground font-medium tracking-wide hover:opacity-80 transition-opacity whitespace-nowrap"
+              className="group flex flex-col p-10 md:p-14 bg-primary border-t-2 border-accent/40 hover:border-accent transition-colors duration-300"
             >
-              <Phone className="h-3.5 w-3.5" />
-              Zadzwoń wcześniej
+              <MapPin className="h-7 w-7 mb-8 text-accent opacity-70" />
+              <div className="text-xs font-medium opacity-60 uppercase tracking-[0.2em] mb-3">Kartuzy · Dowóz / odbiór</div>
+              <div
+                className="font-display font-bold leading-none tracking-[-0.02em] mb-2"
+                style={{ fontSize: "clamp(1.25rem, 3vw, 2rem)" }}
+              >
+                Słowackiego 36
+              </div>
+              <div className="text-base opacity-70 mb-8">Kartuzy</div>
+
+              <div className="border-t border-white/10 pt-4 mb-8">
+                <p className="text-sm opacity-70 leading-relaxed">
+                  Wymagany wcześniejszy kontakt telefoniczny przed przywiezieniem roweru.
+                </p>
+              </div>
+
+              <div className="mt-auto inline-flex items-center gap-2 text-sm font-medium text-accent opacity-70 group-hover:opacity-100 transition-opacity tracking-wide">
+                <Phone className="h-3.5 w-3.5" />
+                Zadzwoń wcześniej →
+              </div>
             </a>
           </div>
         </div>
