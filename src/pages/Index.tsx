@@ -296,15 +296,16 @@ const Index = () => {
           <div className="mt-px border-t border-white/10 flex flex-col sm:flex-row sm:items-center gap-4 px-10 py-6 bg-primary/80">
             <div className="flex items-center gap-3 flex-1">
               <MapPin className="h-4 w-4 text-accent flex-shrink-0 opacity-70" />
-              <div className="text-sm">
-                <span className="font-medium text-primary-foreground/90 tracking-wide">Dowóz / odbiór · Kartuzy</span>
-                <span className="text-primary-foreground/50 mx-2">·</span>
-                <span className="text-primary-foreground/70">ul. Słowackiego 36</span>
+              <div className="text-sm leading-relaxed">
+                <span className="font-medium text-primary-foreground/90 tracking-wide">Dowóz / odbiór · Kartuzy, ul. Słowackiego 36</span>
+                <span className="block text-primary-foreground/55 text-xs mt-0.5 tracking-wide">
+                  Wymagany wcześniejszy kontakt telefoniczny
+                </span>
               </div>
             </div>
             <a
               href={`tel:${PHONE_TEL}`}
-              className="inline-flex items-center gap-2 text-sm text-accent font-medium tracking-wide hover:opacity-80 transition-opacity"
+              className="inline-flex items-center gap-2 text-sm text-accent font-medium tracking-wide hover:opacity-80 transition-opacity whitespace-nowrap"
             >
               <Phone className="h-3.5 w-3.5" />
               Zadzwoń wcześniej
