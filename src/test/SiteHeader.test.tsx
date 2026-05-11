@@ -13,7 +13,7 @@ const renderHeader = (activePage: "home" | "cennik") =>
 describe("SiteHeader", () => {
   it("renders the logo", () => {
     renderHeader("home");
-    expect(screen.getByText("Dr Koło")).toBeInTheDocument();
+    expect(screen.getAllByRole("img", { name: "Dr Koło" }).length).toBeGreaterThan(0);
   });
 
   it("shows hamburger button with aria-label 'Otwórz menu'", () => {

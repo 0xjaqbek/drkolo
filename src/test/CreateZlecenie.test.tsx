@@ -53,6 +53,9 @@ describe('CreateZlecenie', () => {
     renderWithProviders(<CreateZlecenie />, { route: '/zlecenie' });
     fireEvent.change(screen.getByPlaceholderText('Hasło'), { target: { value: 'secret123' } });
     fireEvent.click(screen.getByText('Zaloguj'));
+    // Choice dialog appears after login — click through to create mode
+    await waitFor(() => screen.getByText('Co chcesz zrobić?'));
+    fireEvent.click(screen.getByText('Nowe zlecenie serwisowe').closest('button')!);
     await waitFor(() => {
       expect(screen.getByText('Nowe zlecenie')).toBeInTheDocument();
     });
@@ -61,8 +64,11 @@ describe('CreateZlecenie', () => {
   it('submit button disabled when required fields empty', async () => {
     sessionStorage.setItem('zlecenie_session', 'secret123');
     renderWithProviders(<CreateZlecenie />, { route: '/zlecenie' });
+    // Choice dialog appears — click through to create mode
+    await waitFor(() => screen.getByText('Co chcesz zrobić?'));
+    fireEvent.click(screen.getByText('Nowe zlecenie serwisowe').closest('button')!);
     await waitFor(() => {
-      expect(screen.getByText('Utwórz zlecenie')).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Utwórz zlecenie' })).toBeDisabled();
     });
   });
 });

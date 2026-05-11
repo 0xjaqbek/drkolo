@@ -240,6 +240,7 @@ const Index = () => {
 
           <div className="grid md:grid-cols-2 gap-px bg-white/10">
             {/* Phone card */}
+
             <a
               href={`tel:${PHONE_TEL}`}
               className="group flex flex-col p-10 md:p-14 bg-accent text-accent-foreground hover:shadow-glow transition-shadow duration-500"
@@ -288,6 +289,25 @@ const Index = () => {
               <div className="mt-auto text-sm font-medium text-accent opacity-70 group-hover:opacity-100 transition-opacity tracking-wide">
                 Otwórz w mapach →
               </div>
+            </a>
+          </div>
+
+          {/* Kartuzy pickup strip */}
+          <div className="mt-px border-t border-white/10 flex flex-col sm:flex-row sm:items-center gap-4 px-10 py-6 bg-primary/80">
+            <div className="flex items-center gap-3 flex-1">
+              <MapPin className="h-4 w-4 text-accent flex-shrink-0 opacity-70" />
+              <div className="text-sm">
+                <span className="font-medium text-primary-foreground/90 tracking-wide">Dowóz / odbiór · Kartuzy</span>
+                <span className="text-primary-foreground/50 mx-2">·</span>
+                <span className="text-primary-foreground/70">ul. Słowackiego 36</span>
+              </div>
+            </div>
+            <a
+              href={`tel:${PHONE_TEL}`}
+              className="inline-flex items-center gap-2 text-sm text-accent font-medium tracking-wide hover:opacity-80 transition-opacity"
+            >
+              <Phone className="h-3.5 w-3.5" />
+              Zadzwoń wcześniej
             </a>
           </div>
         </div>
