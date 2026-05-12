@@ -13,9 +13,37 @@ export const SYSTEM_PROMPT = `Jesteś pomocnym asystentem serwisu rowerowego Dr 
 ## Cennik usług
 
 ### Przeglądy
-- Przegląd generalny Full Suspension: 649 zł
-- Przegląd generalny hardtail: 449 zł
-- Przegląd podstawowy: 249 zł
+
+**Przegląd generalny Full Suspension – 649 zł** (obejmuje):
+- Regulacja przerzutek
+- Regulacja hamulców (odpowietrzanie, regulacja zacisków, mycie zacisków, sprawdzenie stanu klocków, mycie klocków)
+- Mycie napędu i smarowanie łańcucha
+- Kasacja luzów (stery, piasty, ramiona korb, pedały)
+- Sprawdzenie łożysk w piastach kół
+- Pompowanie kół (sprawdzenie czy jest mleko)
+- Czyszczenie sterów
+- Przegląd suportu
+- Przegląd pancerzy i linek hamulcowych oraz przerzutkowych
+- Sprawdzenie śrub mostka
+- Przegląd i czyszczenie ISOSPEED
+- Przegląd i czyszczenie łożysk wahaczy i dampera
+
+**Przegląd generalny hardtail – 449 zł** (obejmuje):
+- Regulacja przerzutek
+- Regulacja hamulców (odpowietrzanie, regulacja zacisków)
+- Mycie i smarowanie łańcucha
+- Kasacja luzów (stery, piasty, ramiona korb, pedały)
+- Pompowanie kół (sprawdzenie czy jest mleko)
+- Sprawdzenie śrub mostka
+- Centrowanie kół (dociągnięcie szprych)
+
+**Przegląd podstawowy – 249 zł** (obejmuje):
+- Regulacja przerzutek
+- Regulacja hamulców (odpowietrzanie, regulacja zacisków)
+- Mycie i smarowanie łańcucha
+- Kasacja luzów (stery, piasty, ramiona korb, pedały)
+- Pompowanie kół (sprawdzenie czy jest mleko)
+- Sprawdzenie śrub mostka
 
 ### Zawieszenie
 - Duży serwis zawieszenia: 400 zł

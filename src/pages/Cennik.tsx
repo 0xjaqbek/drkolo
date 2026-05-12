@@ -1,8 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Phone, Wrench, Cog, ArrowLeft,
-  ClipboardList, Settings, CircleDot,
+  ClipboardList, Settings, CircleDot, ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -17,9 +17,49 @@ const categories = [
     icon: ClipboardList,
     title: "Przeglądy",
     items: [
-      { name: "Przegląd generalny Full Suspension", price: "649 zł" },
-      { name: "Przegląd generalny hardtail", price: "449 zł" },
-      { name: "Przegląd podstawowy", price: "249 zł" },
+      {
+        name: "Przegląd generalny Full Suspension",
+        price: "649 zł",
+        checklist: [
+          "Regulacja przerzutek",
+          "Regulacja hamulców (odpowietrzanie, regulacja zacisków, mycie zacisków, sprawdzenie stanu klocków, mycie klocków)",
+          "Mycie napędu i smarowanie łańcucha",
+          "Kasacja luzów (stery, piasty, ramiona korb, pedały)",
+          "Sprawdzenie łożysk w piastach kół",
+          "Pompowanie kół (sprawdzenie czy jest mleko)",
+          "Czyszczenie sterów",
+          "Przegląd suportu",
+          "Przegląd pancerzy i linek hamulcowych oraz przerzutkowych",
+          "Sprawdzenie śrub mostka",
+          "Przegląd i czyszczenie ISOSPEED",
+          "Przegląd i czyszczenie łożysk wahaczy i dampera",
+        ],
+      },
+      {
+        name: "Przegląd generalny hardtail",
+        price: "449 zł",
+        checklist: [
+          "Regulacja przerzutek",
+          "Regulacja hamulców (odpowietrzanie, regulacja zacisków)",
+          "Mycie i smarowanie łańcucha",
+          "Kasacja luzów (stery, piasty, ramiona korb, pedały)",
+          "Pompowanie kół (sprawdzenie czy jest mleko)",
+          "Sprawdzenie śrub mostka",
+          "Centrowanie kół (dociągnięcie szprych)",
+        ],
+      },
+      {
+        name: "Przegląd podstawowy",
+        price: "249 zł",
+        checklist: [
+          "Regulacja przerzutek",
+          "Regulacja hamulców (odpowietrzanie, regulacja zacisków)",
+          "Mycie i smarowanie łańcucha",
+          "Kasacja luzów (stery, piasty, ramiona korb, pedały)",
+          "Pompowanie kół (sprawdzenie czy jest mleko)",
+          "Sprawdzenie śrub mostka",
+        ],
+      },
     ],
   },
   {
@@ -62,6 +102,14 @@ const categories = [
 ];
 
 const Cennik = () => {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggle = (name: string) =>
+    setExpanded(prev => {
+      const next = new Set(prev);
+      next.has(name) ? next.delete(name) : next.add(name);
+      return next;
+    });
+
   useEffect(() => {
     document.title = "Cennik usług — Dr Koło: Serwis Rowerowy Gdańsk";
     let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
@@ -122,10 +170,33 @@ const Cennik = () => {
                     {cat.items.map((item, j) => (
                       <li
                         key={item.name}
-                        className={`flex items-center justify-between py-3 ${j < cat.items.length - 1 ? "border-b border-border" : ""}`}
+                        className={j < cat.items.length - 1 ? "border-b border-border" : ""}
                       >
-                        <span className="text-sm text-muted-foreground">{item.name}</span>
-                        <span className="font-mono text-sm font-semibold text-accent ml-4 shrink-0">{item.price}</span>
+                        <div className="flex items-center justify-between py-3">
+                          <span className="text-sm text-muted-foreground">{item.name}</span>
+                          <div className="flex items-center gap-2 shrink-0 ml-4">
+                            <span className="font-mono text-sm font-semibold text-accent">{item.price}</span>
+                            {'checklist' in item && (
+                              <button
+                                onClick={() => toggle(item.name)}
+                                aria-label="Rozwiń zakres"
+                                className="text-muted-foreground hover:text-accent transition-colors"
+                              >
+                                <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${expanded.has(item.name) ? "rotate-180" : ""}`} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        {'checklist' in item && expanded.has(item.name) && (
+                          <ul className="pb-3 space-y-1.5">
+                            {(item as { name: string; price: string; checklist: string[] }).checklist.map(task => (
+                              <li key={task} className="flex items-start gap-2 text-xs text-muted-foreground">
+                                <span className="text-accent mt-0.5 shrink-0">—</span>
+                                <span>{task}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </li>
                     ))}
                   </ul>
