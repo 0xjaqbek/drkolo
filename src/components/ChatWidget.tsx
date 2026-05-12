@@ -82,7 +82,7 @@ export function ChatWidget() {
           style={{ height: '480px' }}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <div className="font-display font-semibold text-sm">Asystent Dr Koło</div>
+            <div className="font-display font-semibold text-sm">Wirtualny Asystent Dr Koło</div>
             <button
               onClick={() => setIsOpen(false)}
               aria-label="Zamknij"
