@@ -224,7 +224,7 @@ const Index = () => {
       <section
         id="kontakt"
         ref={contactRef}
-        className="reveal py-24 md:py-36 bg-primary text-primary-foreground relative overflow-hidden"
+        className="reveal py-24 md:py-36 bg-primary dark:bg-card text-primary-foreground dark:text-card-foreground relative overflow-hidden"
       >
         <div className="absolute inset-0 grain opacity-20" />
         <div className="container relative">
