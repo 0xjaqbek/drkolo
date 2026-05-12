@@ -1,6 +1,6 @@
 create table if not exists survey_responses (
   id           uuid primary key default gen_random_uuid(),
-  role         text not null check (role in ('wlasciciel', 'serwisant_1', 'serwisant_2')),
+  role         text not null check (role in ('szef', 'mechanik_1', 'mechanik_2')),
   answers      jsonb not null,
   submitted_at timestamptz not null default now()
 );

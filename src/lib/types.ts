@@ -80,7 +80,7 @@ export interface BlockedTime {
   created_at: string;
 }
 
-export type SurveyRole = 'wlasciciel' | 'serwisant_1' | 'serwisant_2';
+export type SurveyRole = 'szef' | 'mechanik_1' | 'mechanik_2';
 
 export type SurveyAnswers = Record<string, Record<string, string>>;
 

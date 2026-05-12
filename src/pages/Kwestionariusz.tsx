@@ -8,9 +8,9 @@ import { SURVEY_SECTIONS } from '@/lib/surveyQuestions';
 import type { SurveyRole, SurveyAnswers } from '@/lib/types';
 
 const ROLES: { value: SurveyRole; label: string }[] = [
-  { value: 'wlasciciel', label: 'Właściciel' },
-  { value: 'serwisant_1', label: 'Serwisant 1' },
-  { value: 'serwisant_2', label: 'Serwisant 2' },
+  { value: 'szef', label: 'Szef' },
+  { value: 'mechanik_1', label: 'Mechanik 1' },
+  { value: 'mechanik_2', label: 'Mechanik 2' },
 ];
 
 export default function Kwestionariusz() {

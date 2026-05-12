@@ -15,7 +15,7 @@ const CORRECT_PASSWORD = 'testpass';
 
 const MOCK_RESPONSE = {
   id: '1',
-  role: 'wlasciciel',
+  role: 'szef',
   answers: {
     profil: { imie: 'Marek', lata_w_branzy: '10' },
   },
@@ -53,9 +53,9 @@ describe('KwestionariuszOdp', () => {
       target: { value: CORRECT_PASSWORD },
     });
     fireEvent.click(screen.getByText('Wejdź'));
-    expect(screen.getByText('Właściciel')).toBeInTheDocument();
-    expect(screen.getByText('Serwisant 1')).toBeInTheDocument();
-    expect(screen.getByText('Serwisant 2')).toBeInTheDocument();
+    expect(screen.getByText('Szef')).toBeInTheDocument();
+    expect(screen.getByText('Mechanik 1')).toBeInTheDocument();
+    expect(screen.getByText('Mechanik 2')).toBeInTheDocument();
   });
 
   it('shows not-filled message when role has no response', () => {

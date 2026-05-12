@@ -48,9 +48,9 @@ describe('Kwestionariusz', () => {
       target: { value: CORRECT_PASSWORD },
     });
     fireEvent.click(screen.getByText('Wejdź'));
-    expect(screen.getByText('Właściciel')).toBeInTheDocument();
-    expect(screen.getByText('Serwisant 1')).toBeInTheDocument();
-    expect(screen.getByText('Serwisant 2')).toBeInTheDocument();
+    expect(screen.getByText('Szef')).toBeInTheDocument();
+    expect(screen.getByText('Mechanik 1')).toBeInTheDocument();
+    expect(screen.getByText('Mechanik 2')).toBeInTheDocument();
   });
 
   it('shows already-done message when role already submitted', () => {
@@ -60,7 +60,7 @@ describe('Kwestionariusz', () => {
       target: { value: CORRECT_PASSWORD },
     });
     fireEvent.click(screen.getByText('Wejdź'));
-    fireEvent.click(screen.getByText('Właściciel'));
+    fireEvent.click(screen.getByText('Szef'));
     expect(screen.getByText(/już wypełniono/i)).toBeInTheDocument();
   });
 
@@ -70,7 +70,7 @@ describe('Kwestionariusz', () => {
       target: { value: CORRECT_PASSWORD },
     });
     fireEvent.click(screen.getByText('Wejdź'));
-    fireEvent.click(screen.getByText('Właściciel'));
+    fireEvent.click(screen.getByText('Szef'));
     expect(screen.getByText('Krok 1 z 8')).toBeInTheDocument();
     expect(screen.getByText('Profil')).toBeInTheDocument();
   });
@@ -81,7 +81,7 @@ describe('Kwestionariusz', () => {
       target: { value: CORRECT_PASSWORD },
     });
     fireEvent.click(screen.getByText('Wejdź'));
-    fireEvent.click(screen.getByText('Właściciel'));
+    fireEvent.click(screen.getByText('Szef'));
     fireEvent.click(screen.getByText('Dalej'));
     expect(screen.getByText('Krok 2 z 8')).toBeInTheDocument();
   });
@@ -92,7 +92,7 @@ describe('Kwestionariusz', () => {
       target: { value: CORRECT_PASSWORD },
     });
     fireEvent.click(screen.getByText('Wejdź'));
-    fireEvent.click(screen.getByText('Właściciel'));
+    fireEvent.click(screen.getByText('Szef'));
     fireEvent.click(screen.getByText('Dalej'));
     fireEvent.click(screen.getByText('Wstecz'));
     expect(screen.getByText('Krok 1 z 8')).toBeInTheDocument();
@@ -107,7 +107,7 @@ describe('Kwestionariusz', () => {
       target: { value: CORRECT_PASSWORD },
     });
     fireEvent.click(screen.getByText('Wejdź'));
-    fireEvent.click(screen.getByText('Właściciel'));
+    fireEvent.click(screen.getByText('Szef'));
 
     for (let i = 0; i < 7; i++) {
       fireEvent.click(screen.getByText('Dalej'));
@@ -116,7 +116,7 @@ describe('Kwestionariusz', () => {
     expect(screen.getByText('Wyślij')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Wyślij'));
     expect(mockMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ role: 'wlasciciel' })
+      expect.objectContaining({ role: 'szef' })
     );
   });
 
@@ -128,7 +128,7 @@ describe('Kwestionariusz', () => {
       target: { value: CORRECT_PASSWORD },
     });
     fireEvent.click(screen.getByText('Wejdź'));
-    fireEvent.click(screen.getByText('Właściciel'));
+    fireEvent.click(screen.getByText('Szef'));
 
     expect(screen.getByText(/dziękujemy/i)).toBeInTheDocument();
   });

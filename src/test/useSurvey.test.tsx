@@ -37,7 +37,7 @@ describe('useCheckRoleSubmitted', () => {
       maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'abc' }, error: null }),
     });
 
-    const { result } = renderHook(() => useCheckRoleSubmitted('wlasciciel'), { wrapper });
+    const { result } = renderHook(() => useCheckRoleSubmitted('szef'), { wrapper });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toBe(true);
@@ -50,7 +50,7 @@ describe('useCheckRoleSubmitted', () => {
       maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
     });
 
-    const { result } = renderHook(() => useCheckRoleSubmitted('serwisant_1'), { wrapper });
+    const { result } = renderHook(() => useCheckRoleSubmitted('mechanik_1'), { wrapper });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toBe(false);
@@ -70,13 +70,13 @@ describe('useSubmitSurvey', () => {
     const { result } = renderHook(() => useSubmitSurvey(), { wrapper });
 
     result.current.mutate({
-      role: 'wlasciciel',
+      role: 'szef',
       answers: { profil: { imie: 'Janek' } },
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(mockInsert).toHaveBeenCalledWith({
-      role: 'wlasciciel',
+      role: 'szef',
       answers: { profil: { imie: 'Janek' } },
     });
   });
@@ -85,7 +85,7 @@ describe('useSubmitSurvey', () => {
 describe('useFetchAllSurveys', () => {
   it('returns all survey responses', async () => {
     const mockData = [
-      { id: '1', role: 'wlasciciel', answers: {}, submitted_at: '2026-05-12T10:00:00Z' },
+      { id: '1', role: 'szef', answers: {}, submitted_at: '2026-05-12T10:00:00Z' },
     ];
     mockFrom.mockReturnValue({
       select: vi.fn().mockResolvedValue({ data: mockData, error: null }),
