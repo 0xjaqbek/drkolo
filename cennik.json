@@ -1,0 +1,128 @@
+[
+    {
+        "symbol": "PRZEGLĄD GENERALNY",
+        "nazwa": "Przegląd generalny Full Suspension",
+        "jednostka": "szt.",
+        "cena_netto": 649.0,
+        "cena_brutto": 649.0
+    },
+    {
+        "symbol": "PRZEGLĄD GENERALNY",
+        "nazwa": "Przegląd generalny hardtail",
+        "jednostka": "szt.",
+        "cena_netto": 449.0,
+        "cena_brutto": 449.0
+    },
+    {
+        "symbol": "DUŻY SERWIS ZAWIESZ",
+        "nazwa": "Duży serwis zawieszenia",
+        "jednostka": "szt.",
+        "cena_netto": 400.0,
+        "cena_brutto": 400.0
+    },
+    {
+        "symbol": "PRZEGLĄD PODSTAWOWO",
+        "nazwa": "Przegląd podstawowy",
+        "jednostka": "szt.",
+        "cena_netto": 249.0,
+        "cena_brutto": 249.0
+    },
+    {
+        "symbol": "MAŁY SERWIS ZAWIESZ",
+        "nazwa": "Mały serwis zawieszenia",
+        "jednostka": "szt.",
+        "cena_netto": 200.0,
+        "cena_brutto": 200.0
+    },
+    {
+        "symbol": "DIAGNOSTYKA BOSCH",
+        "nazwa": "Diagnostyka Bosch",
+        "jednostka": "szt.",
+        "cena_netto": 200.0,
+        "cena_brutto": 200.0
+    },
+    {
+        "symbol": "MONTAŻ SYSTEMU TUB",
+        "nazwa": "Montaż systemu tubeless",
+        "jednostka": "szt.",
+        "cena_netto": 150.0,
+        "cena_brutto": 150.0
+    },
+    {
+        "symbol": "ZAŁOŻENIE ŁAŃCUCHA",
+        "nazwa": "Założenie łańcucha + regulacja przerzutki",
+        "jednostka": "szt.",
+        "cena_netto": 80.0,
+        "cena_brutto": 80.0
+    },
+    {
+        "symbol": "MYCIE NAPĘDU",
+        "nazwa": "Mycie napędu",
+        "jednostka": "szt.",
+        "cena_netto": 80.0,
+        "cena_brutto": 80.0
+    },
+    {
+        "symbol": "ZMIANA OPONY TUBELE",
+        "nazwa": "Zmiana opony tubeless",
+        "jednostka": "szt.",
+        "cena_netto": 50.0,
+        "cena_brutto": 50.0
+    },
+    {
+        "symbol": "REGULACJA PRZERZUT",
+        "nazwa": "Regulacja przerzutki",
+        "jednostka": "szt.",
+        "cena_netto": 50.0,
+        "cena_brutto": 50.0
+    },
+    {
+        "symbol": "SERWIS HAMULCA",
+        "nazwa": "Serwis hamulca",
+        "jednostka": "szt.",
+        "cena_netto": 50.0,
+        "cena_brutto": 50.0
+    },
+    {
+        "symbol": "CENTROWANIE KOŁA",
+        "nazwa": "Centrowanie koła",
+        "jednostka": "szt.",
+        "cena_netto": 50.0,
+        "cena_brutto": 50.0
+    },
+    {
+        "symbol": "DOLANIE USZCZELNIAC",
+        "nazwa": "Dolanie uszczelniacza",
+        "jednostka": "szt.",
+        "cena_netto": 40.0,
+        "cena_brutto": 40.0
+    },
+    {
+        "symbol": "PROSTOWANIE HAKA P",
+        "nazwa": "Prostowanie haka przerzutki",
+        "jednostka": "szt.",
+        "cena_netto": 30.0,
+        "cena_brutto": 30.0
+    },
+    {
+        "symbol": "WYMIANA DĘTKI",
+        "nazwa": "Wymiana dętki",
+        "jednostka": "szt.",
+        "cena_netto": 30.0,
+        "cena_brutto": 30.0
+    },
+    {
+        "symbol": "USŁUGI - INNE",
+        "nazwa": "Usługi - Inne",
+        "jednostka": "szt.",
+        "cena_netto": 1.0,
+        "cena_brutto": 1.0
+    },
+    {
+        "symbol": "CZĘŚCI Z MONTAŻEM",
+        "nazwa": "Części z montażem",
+        "jednostka": "szt.",
+        "cena_netto": 1.0,
+        "cena_brutto": 1.0
+    }
+]
