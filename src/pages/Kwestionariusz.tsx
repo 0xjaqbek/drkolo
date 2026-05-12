@@ -3,25 +3,17 @@ import { SiteHeader } from '@/components/SiteHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useCheckRoleSubmitted, useSubmitSurvey } from '@/hooks/useSurvey';
+import { useSubmitSurvey } from '@/hooks/useSurvey';
 import { SURVEY_SECTIONS } from '@/lib/surveyQuestions';
-import type { SurveyRole, SurveyAnswers } from '@/lib/types';
-
-const ROLES: { value: SurveyRole; label: string }[] = [
-  { value: 'szef', label: 'Szef' },
-  { value: 'mechanik_1', label: 'Mechanik 1' },
-  { value: 'mechanik_2', label: 'Mechanik 2' },
-];
+import type { SurveyAnswers } from '@/lib/types';
 
 export default function Kwestionariusz() {
   const [password, setPassword] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
   const [authError, setAuthError] = useState(false);
-  const [role, setRole] = useState<SurveyRole | null>(null);
   const [wizardStep, setWizardStep] = useState(0);
   const [answers, setAnswers] = useState<SurveyAnswers>({});
 
-  const { data: alreadySubmitted, isLoading: checkLoading } = useCheckRoleSubmitted(role);
   const { mutate: submitSurvey, isPending, isSuccess } = useSubmitSurvey();
 
   const handleLogin = () => {
@@ -38,11 +30,6 @@ export default function Kwestionariusz() {
       ...prev,
       [sectionKey]: { ...(prev[sectionKey] ?? {}), [questionKey]: value },
     }));
-  };
-
-  const handleSubmit = () => {
-    if (!role) return;
-    submitSurvey({ role, answers });
   };
 
   if (!authenticated) {
@@ -65,61 +52,6 @@ export default function Kwestionariusz() {
             <Button onClick={handleLogin} className="w-full">
               Wejdź
             </Button>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  if (!role) {
-    return (
-      <div className="min-h-screen bg-background text-foreground">
-        <SiteHeader />
-        <main className="pt-16 flex items-center justify-center min-h-screen">
-          <div className="w-full max-w-sm space-y-6 p-8">
-            <h1 className="font-display font-bold text-2xl">Kim jesteś?</h1>
-            <p className="text-muted-foreground text-sm">
-              Wybierz swoją rolę aby rozpocząć kwestionariusz.
-            </p>
-            <div className="space-y-3">
-              {ROLES.map((r) => (
-                <Button
-                  key={r.value}
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setRole(r.value)}
-                >
-                  {r.label}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  if (checkLoading) {
-    return (
-      <div className="min-h-screen bg-background text-foreground">
-        <SiteHeader />
-        <main className="pt-16 flex items-center justify-center min-h-screen">
-          <p className="text-muted-foreground">Sprawdzanie…</p>
-        </main>
-      </div>
-    );
-  }
-
-  if (alreadySubmitted) {
-    return (
-      <div className="min-h-screen bg-background text-foreground">
-        <SiteHeader />
-        <main className="pt-16 flex items-center justify-center min-h-screen">
-          <div className="text-center space-y-4 p-8">
-            <h2 className="font-display font-bold text-2xl">Już wypełniono</h2>
-            <p className="text-muted-foreground">
-              Formularz dla tej roli został już wypełniony. Dziękujemy!
-            </p>
           </div>
         </main>
       </div>
@@ -211,7 +143,7 @@ export default function Kwestionariusz() {
               Wstecz
             </Button>
             {isLastStep ? (
-              <Button onClick={handleSubmit} disabled={isPending}>
+              <Button onClick={() => submitSurvey({ answers })} disabled={isPending}>
                 {isPending ? 'Wysyłanie…' : 'Wyślij'}
               </Button>
             ) : (

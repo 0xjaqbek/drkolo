@@ -80,13 +80,10 @@ export interface BlockedTime {
   created_at: string;
 }
 
-export type SurveyRole = 'szef' | 'mechanik_1' | 'mechanik_2';
-
 export type SurveyAnswers = Record<string, Record<string, string>>;
 
 export interface SurveyResponse {
   id: string;
-  role: SurveyRole;
   answers: SurveyAnswers;
   submitted_at: string;
 }

@@ -15,10 +15,7 @@ const CORRECT_PASSWORD = 'testpass';
 
 const MOCK_RESPONSE = {
   id: '1',
-  role: 'szef',
-  answers: {
-    profil: { imie: 'Marek', lata_w_branzy: '10' },
-  },
+  answers: { profil: { imie: 'Marek', lata_w_branzy: '10' } },
   submitted_at: '2026-05-12T10:00:00Z',
 };
 
@@ -40,41 +37,32 @@ describe('KwestionariuszOdp', () => {
 
   it('shows error on wrong password', () => {
     renderWithProviders(<KwestionariuszOdp />);
-    fireEvent.change(screen.getByPlaceholderText('Hasło'), {
-      target: { value: 'wrong' },
-    });
+    fireEvent.change(screen.getByPlaceholderText('Hasło'), { target: { value: 'wrong' } });
     fireEvent.click(screen.getByText('Wejdź'));
     expect(screen.getByText('Nieprawidłowe hasło')).toBeInTheDocument();
   });
 
-  it('shows 3 role tabs after correct password', () => {
+  it('shows empty state when no responses', () => {
     renderWithProviders(<KwestionariuszOdp />);
-    fireEvent.change(screen.getByPlaceholderText('Hasło'), {
-      target: { value: CORRECT_PASSWORD },
-    });
+    fireEvent.change(screen.getByPlaceholderText('Hasło'), { target: { value: CORRECT_PASSWORD } });
     fireEvent.click(screen.getByText('Wejdź'));
-    expect(screen.getByText('Szef')).toBeInTheDocument();
-    expect(screen.getByText('Mechanik 1')).toBeInTheDocument();
-    expect(screen.getByText('Mechanik 2')).toBeInTheDocument();
+    expect(screen.getByText('Brak odpowiedzi.')).toBeInTheDocument();
   });
 
-  it('shows not-filled message when role has no response', () => {
-    mockFetch.mockReturnValue({ data: [], isLoading: false });
-    renderWithProviders(<KwestionariuszOdp />);
-    fireEvent.change(screen.getByPlaceholderText('Hasło'), {
-      target: { value: CORRECT_PASSWORD },
-    });
-    fireEvent.click(screen.getByText('Wejdź'));
-    expect(screen.getByText(/nie wypełniono/i)).toBeInTheDocument();
-  });
-
-  it('shows answers when role has a response', () => {
+  it('shows response entry with name after login', () => {
     mockFetch.mockReturnValue({ data: [MOCK_RESPONSE], isLoading: false });
     renderWithProviders(<KwestionariuszOdp />);
-    fireEvent.change(screen.getByPlaceholderText('Hasło'), {
-      target: { value: CORRECT_PASSWORD },
-    });
+    fireEvent.change(screen.getByPlaceholderText('Hasło'), { target: { value: CORRECT_PASSWORD } });
     fireEvent.click(screen.getByText('Wejdź'));
     expect(screen.getByText('Marek')).toBeInTheDocument();
+  });
+
+  it('expands response to show answers on click', () => {
+    mockFetch.mockReturnValue({ data: [MOCK_RESPONSE], isLoading: false });
+    renderWithProviders(<KwestionariuszOdp />);
+    fireEvent.change(screen.getByPlaceholderText('Hasło'), { target: { value: CORRECT_PASSWORD } });
+    fireEvent.click(screen.getByText('Wejdź'));
+    fireEvent.click(screen.getByText('Marek'));
+    expect(screen.getByText('10')).toBeInTheDocument();
   });
 });

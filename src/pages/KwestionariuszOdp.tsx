@@ -2,21 +2,14 @@ import { useState } from 'react';
 import { SiteHeader } from '@/components/SiteHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFetchAllSurveys } from '@/hooks/useSurvey';
 import { SURVEY_SECTIONS } from '@/lib/surveyQuestions';
-import type { SurveyRole, SurveyResponse } from '@/lib/types';
-
-const ROLES: { value: SurveyRole; label: string }[] = [
-  { value: 'szef', label: 'Szef' },
-  { value: 'mechanik_1', label: 'Mechanik 1' },
-  { value: 'mechanik_2', label: 'Mechanik 2' },
-];
 
 export default function KwestionariuszOdp() {
   const [password, setPassword] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
   const [authError, setAuthError] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { data: responses = [], isLoading } = useFetchAllSurveys();
 
@@ -28,9 +21,6 @@ export default function KwestionariuszOdp() {
       setAuthError(true);
     }
   };
-
-  const getResponse = (role: SurveyRole): SurveyResponse | undefined =>
-    responses.find((r) => r.role === role);
 
   if (!authenticated) {
     return (
@@ -62,41 +52,42 @@ export default function KwestionariuszOdp() {
     <div className="min-h-screen bg-background text-foreground">
       <SiteHeader />
       <main className="pt-16">
-        <div className="container py-12">
+        <div className="container max-w-3xl py-12">
           <h1 className="font-display font-bold text-3xl mb-8">Odpowiedzi kwestionariusza</h1>
           {isLoading ? (
             <p className="text-muted-foreground">Ładowanie…</p>
+          ) : responses.length === 0 ? (
+            <p className="text-muted-foreground">Brak odpowiedzi.</p>
           ) : (
-            <Tabs defaultValue="szef">
-              <TabsList className="mb-8">
-                {ROLES.map((r) => (
-                  <TabsTrigger key={r.value} value={r.value}>
-                    {r.label}
-                    {!getResponse(r.value) && (
-                      <span className="ml-2 text-xs text-muted-foreground">(brak)</span>
-                    )}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-
-              {ROLES.map((r) => {
-                const response = getResponse(r.value);
+            <div className="space-y-4">
+              {responses.map((response) => {
+                const name = response.answers.profil?.imie || 'Anonim';
+                const isExpanded = expandedId === response.id;
                 return (
-                  <TabsContent key={r.value} value={r.value}>
-                    {!response ? (
-                      <p className="text-muted-foreground">Nie wypełniono jeszcze.</p>
-                    ) : (
-                      <div className="space-y-10">
-                        <p className="text-xs text-muted-foreground">
-                          Wypełniono:{' '}
+                  <div key={response.id} className="border border-border rounded-lg overflow-hidden">
+                    <button
+                      className="w-full flex items-center justify-between p-4 text-left hover:bg-secondary/30 transition-colors"
+                      onClick={() => setExpandedId(isExpanded ? null : response.id)}
+                    >
+                      <div>
+                        <p className="font-medium">{name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           {new Date(response.submitted_at).toLocaleString('pl-PL')}
                         </p>
+                      </div>
+                      <span className="text-muted-foreground text-sm">
+                        {isExpanded ? '▲' : '▼'}
+                      </span>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="border-t border-border p-6 space-y-8">
                         {SURVEY_SECTIONS.map((section) => {
                           const sectionAnswers = response.answers[section.key];
                           if (!sectionAnswers) return null;
                           return (
                             <div key={section.key} className="space-y-4">
-                              <h3 className="font-semibold text-lg border-b border-border pb-2">
+                              <h3 className="font-semibold text-base border-b border-border pb-2">
                                 {section.title}
                               </h3>
                               {section.questions.map((q) => {
@@ -114,10 +105,10 @@ export default function KwestionariuszOdp() {
                         })}
                       </div>
                     )}
-                  </TabsContent>
+                  </div>
                 );
               })}
-            </Tabs>
+            </div>
           )}
         </div>
       </main>

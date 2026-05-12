@@ -13,11 +13,7 @@ vi.mock('@/lib/supabase', () => ({
 import { supabase } from '@/lib/supabase';
 const mockFrom = supabase.from as ReturnType<typeof vi.fn>;
 
-import {
-  useCheckRoleSubmitted,
-  useSubmitSurvey,
-  useFetchAllSurveys,
-} from '@/hooks/useSurvey';
+import { useSubmitSurvey, useFetchAllSurveys } from '@/hooks/useSurvey';
 
 function wrapper({ children }: { children: ReactNode }) {
   return (
@@ -29,66 +25,30 @@ function wrapper({ children }: { children: ReactNode }) {
 
 beforeEach(() => vi.clearAllMocks());
 
-describe('useCheckRoleSubmitted', () => {
-  it('returns true when role already has a response', async () => {
-    mockFrom.mockReturnValue({
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'abc' }, error: null }),
-    });
-
-    const { result } = renderHook(() => useCheckRoleSubmitted('szef'), { wrapper });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toBe(true);
-  });
-
-  it('returns false when role has no response', async () => {
-    mockFrom.mockReturnValue({
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-    });
-
-    const { result } = renderHook(() => useCheckRoleSubmitted('mechanik_1'), { wrapper });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toBe(false);
-  });
-
-  it('is disabled when role is null', () => {
-    const { result } = renderHook(() => useCheckRoleSubmitted(null), { wrapper });
-    expect(result.current.fetchStatus).toBe('idle');
-  });
-});
-
 describe('useSubmitSurvey', () => {
-  it('calls supabase insert with role and answers', async () => {
+  it('calls supabase insert with answers', async () => {
     const mockInsert = vi.fn().mockResolvedValue({ error: null });
     mockFrom.mockReturnValue({ insert: mockInsert });
 
     const { result } = renderHook(() => useSubmitSurvey(), { wrapper });
 
-    result.current.mutate({
-      role: 'szef',
-      answers: { profil: { imie: 'Janek' } },
-    });
+    result.current.mutate({ answers: { profil: { imie: 'Janek' } } });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(mockInsert).toHaveBeenCalledWith({
-      role: 'szef',
       answers: { profil: { imie: 'Janek' } },
     });
   });
 });
 
 describe('useFetchAllSurveys', () => {
-  it('returns all survey responses', async () => {
+  it('returns all survey responses ordered by date', async () => {
     const mockData = [
-      { id: '1', role: 'szef', answers: {}, submitted_at: '2026-05-12T10:00:00Z' },
+      { id: '1', answers: { profil: { imie: 'Marek' } }, submitted_at: '2026-05-12T10:00:00Z' },
     ];
     mockFrom.mockReturnValue({
-      select: vi.fn().mockResolvedValue({ data: mockData, error: null }),
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({ data: mockData, error: null }),
     });
 
     const { result } = renderHook(() => useFetchAllSurveys(), { wrapper });
