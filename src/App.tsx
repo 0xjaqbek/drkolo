@@ -10,6 +10,8 @@ import ZlecenieView from "./pages/ZlecenieView.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Rezerwacja from "./pages/Rezerwacja.tsx";
 import KalendarzAdmin from "./pages/KalendarzAdmin.tsx";
+import ChatAdmin from "./pages/ChatAdmin.tsx";
+import { ChatWidget } from "./components/ChatWidget.tsx";
 
 const queryClient = new QueryClient();
 
@@ -26,8 +28,10 @@ const App = () => (
           <Route path="/zlecenie/:hash" element={<ZlecenieView />} />
           <Route path="/rezerwacja" element={<Rezerwacja />} />
           <Route path="/kalendarz" element={<KalendarzAdmin />} />
+          <Route path="/chat-admin" element={<ChatAdmin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <ChatWidget />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
