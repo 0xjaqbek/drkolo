@@ -13,6 +13,7 @@ function getOrCreateSessionId(): string {
 }
 
 export function ChatWidget() {
+  const [apiReady, setApiReady] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -20,6 +21,14 @@ export function ChatWidget() {
   const [smsBody, setSmsBody] = useState<string | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const url = import.meta.env.VITE_CHAT_API_URL as string;
+    if (!url) return;
+    fetch(`${url}/api/health`)
+      .then((res) => { if (res.ok) setApiReady(true); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView?.({ behavior: 'smooth' });
@@ -52,6 +61,8 @@ export function ChatWidget() {
       setIsLoading(false);
     }
   };
+
+  if (!apiReady) return null;
 
   return (
     <>

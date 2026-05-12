@@ -9,27 +9,47 @@ vi.mock('@/lib/chatApi', () => ({
 import { sendChatMessage } from '@/lib/chatApi';
 const mockSend = sendChatMessage as ReturnType<typeof vi.fn>;
 
+// Mock fetch so health check resolves to 200 by default
+const mockFetch = vi.fn();
+vi.stubGlobal('fetch', mockFetch);
+
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubEnv('VITE_CHAT_API_URL', 'http://test-api');
   sessionStorage.clear();
+  mockFetch.mockResolvedValue({ ok: true });
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe('ChatWidget', () => {
-  it('renders floating button, no panel on mount', () => {
+  it('renders nothing until health check passes', async () => {
+    mockFetch.mockResolvedValue({ ok: false });
     render(<ChatWidget />);
-    expect(screen.getByLabelText('Otwórz czat')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByLabelText('Otwórz czat')).toBeNull());
+  });
+
+  it('renders floating button after health check passes', async () => {
+    render(<ChatWidget />);
+    await waitFor(() =>
+      expect(screen.getByLabelText('Otwórz czat')).toBeInTheDocument()
+    );
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('opens panel when floating button clicked', () => {
+  it('opens panel when floating button clicked', async () => {
     render(<ChatWidget />);
+    await waitFor(() => screen.getByLabelText('Otwórz czat'));
     fireEvent.click(screen.getByLabelText('Otwórz czat'));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText('Asystent Dr Koło')).toBeInTheDocument();
   });
 
-  it('closes panel when close button clicked', () => {
+  it('closes panel when close button clicked', async () => {
     render(<ChatWidget />);
+    await waitFor(() => screen.getByLabelText('Otwórz czat'));
     fireEvent.click(screen.getByLabelText('Otwórz czat'));
     fireEvent.click(screen.getByLabelText('Zamknij'));
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -39,6 +59,7 @@ describe('ChatWidget', () => {
     mockSend.mockResolvedValue({ reply: 'Witaj! Jak mogę pomóc?' });
 
     render(<ChatWidget />);
+    await waitFor(() => screen.getByLabelText('Otwórz czat'));
     fireEvent.click(screen.getByLabelText('Otwórz czat'));
     fireEvent.change(screen.getByLabelText('Wiadomość'), { target: { value: 'Cześć' } });
     fireEvent.click(screen.getByLabelText('Wyślij'));
@@ -53,6 +74,7 @@ describe('ChatWidget', () => {
     mockSend.mockResolvedValue({ reply: 'Świetnie, przygotowałem SMS.', smsBody: 'Dzień dobry, mam MTB' });
 
     render(<ChatWidget />);
+    await waitFor(() => screen.getByLabelText('Otwórz czat'));
     fireEvent.click(screen.getByLabelText('Otwórz czat'));
     expect(screen.queryByText('Wyślij SMS do serwisu')).toBeNull();
 
@@ -68,6 +90,7 @@ describe('ChatWidget', () => {
     mockSend.mockResolvedValue({ reply: 'Gotowe.', smsBody: 'Dzień dobry, problem' });
 
     render(<ChatWidget />);
+    await waitFor(() => screen.getByLabelText('Otwórz czat'));
     fireEvent.click(screen.getByLabelText('Otwórz czat'));
     fireEvent.change(screen.getByLabelText('Wiadomość'), { target: { value: 'tak' } });
     fireEvent.click(screen.getByLabelText('Wyślij'));
@@ -82,6 +105,7 @@ describe('ChatWidget', () => {
     mockSend.mockRejectedValue(new Error('Network error'));
 
     render(<ChatWidget />);
+    await waitFor(() => screen.getByLabelText('Otwórz czat'));
     fireEvent.click(screen.getByLabelText('Otwórz czat'));
     fireEvent.change(screen.getByLabelText('Wiadomość'), { target: { value: 'Cześć' } });
     fireEvent.click(screen.getByLabelText('Wyślij'));
