@@ -44,7 +44,7 @@ describe('ChatWidget', () => {
     await waitFor(() => screen.getByLabelText('Otwórz czat'));
     fireEvent.click(screen.getByLabelText('Otwórz czat'));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByText('Asystent Dr Koło')).toBeInTheDocument();
+    expect(screen.getByText('Wirtualny Asystent Dr Koło')).toBeInTheDocument();
   });
 
   it('closes panel when close button clicked', async () => {

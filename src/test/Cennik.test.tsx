@@ -12,8 +12,8 @@ describe("Cennik", () => {
   it("renders all 5 categories", () => {
     render(<MemoryRouter><Cennik /></MemoryRouter>);
     expect(screen.getByText("Przeglądy")).toBeInTheDocument();
-    expect(screen.getByText("Naprawy")).toBeInTheDocument();
-    expect(screen.getByText("Amortyzacja")).toBeInTheDocument();
+    expect(screen.getByText("Hamulce i diagnostyka")).toBeInTheDocument();
+    expect(screen.getByText("Zawieszenie")).toBeInTheDocument();
     expect(screen.getByText("Koła")).toBeInTheDocument();
     expect(screen.getByText("Napęd")).toBeInTheDocument();
   });
