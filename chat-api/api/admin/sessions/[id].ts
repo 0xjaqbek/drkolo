@@ -12,7 +12,7 @@ function checkAuth(req: VercelRequest, res: VercelResponse): boolean {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (handleOptions(req, res)) return;
-  setCors(res);
+  setCors(req, res);
   if (!checkAuth(req, res)) return;
 
   const { id } = req.query as { id: string };

@@ -12,7 +12,7 @@ interface ChatMessage {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (handleOptions(req, res)) return;
-  setCors(res);
+  setCors(req, res);
 
   if (req.method !== 'POST') return res.status(405).end();
 
