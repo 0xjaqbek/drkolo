@@ -51,7 +51,7 @@ export function ChatWidget() {
     try {
       const response = await sendChatMessage(sessionIdRef.current, updatedMessages);
       setMessages((prev) => [...prev, { role: 'assistant', content: response.reply }]);
-      if (response.smsBody) setSmsBody(response.smsBody);
+      if (response.smsBody) setSmsBody(`${response.smsBody}\n\n[wiadomość wygenerowana przez Wirtualnego Asystenta Dr Koło]`);
     } catch {
       setMessages((prev) => [
         ...prev,
