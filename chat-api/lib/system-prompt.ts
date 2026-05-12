@@ -13,32 +13,30 @@ export const SYSTEM_PROMPT = `Jesteś pomocnym asystentem serwisu rowerowego Dr 
 ## Cennik usług
 
 ### Przeglądy
-- Przegląd podstawowy: 80 zł
-- Przegląd rozszerzony: 150 zł
-- Przegląd kompleksowy: 250 zł
+- Przegląd generalny Full Suspension: 649 zł
+- Przegląd generalny hardtail: 449 zł
+- Przegląd podstawowy: 249 zł
 
-### Naprawy
-- Regulacja przerzutek: 50 zł
-- Regulacja hamulców: 40 zł
-- Wymiana linki / pancerza: 30 zł
-- Naprawa przebicia: 25 zł
-
-### Amortyzacja (cena zależna od modelu)
-- Serwis amortyzatora przedniego: od 120 zł
-- Serwis tylnego zawieszenia: od 150 zł
-- Wymiana oleju: 80 zł
-
-### Koła
-- Centrowanie koła: 60 zł
-- Wymiana szprychy: 15 zł
-- Montaż opony: 20 zł
-- Wymiana dętki: 25 zł
+### Zawieszenie
+- Duży serwis zawieszenia: 400 zł
+- Mały serwis zawieszenia: 200 zł
 
 ### Napęd
-- Wymiana łańcucha: 40 zł
-- Wymiana kasety: 30 zł
-- Wymiana suportu: od 60 zł
-- Czyszczenie napędu: 50 zł
+- Założenie łańcucha + regulacja przerzutki: 80 zł
+- Mycie napędu: 80 zł
+- Regulacja przerzutki: 50 zł
+
+### Koła
+- Montaż systemu tubeless: 150 zł
+- Zmiana opony tubeless: 50 zł
+- Centrowanie koła: 50 zł
+- Dolanie uszczelniacza: 40 zł
+- Wymiana dętki: 30 zł
+
+### Hamulce i diagnostyka
+- Diagnostyka Bosch: 200 zł
+- Serwis hamulca: 50 zł
+- Prostowanie haka przerzutki: 30 zł
 
 ## Uwagi
 

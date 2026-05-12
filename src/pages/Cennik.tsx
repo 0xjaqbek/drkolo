@@ -17,49 +17,46 @@ const categories = [
     icon: ClipboardList,
     title: "Przeglądy",
     items: [
-      { name: "Przegląd podstawowy", price: "80 zł" },
-      { name: "Przegląd rozszerzony", price: "150 zł" },
-      { name: "Przegląd kompleksowy", price: "250 zł" },
-    ],
-  },
-  {
-    icon: Wrench,
-    title: "Naprawy",
-    items: [
-      { name: "Regulacja przerzutek", price: "50 zł" },
-      { name: "Regulacja hamulców", price: "40 zł" },
-      { name: "Wymiana linki / pancerza", price: "30 zł" },
-      { name: "Naprawa przebicia", price: "25 zł" },
+      { name: "Przegląd generalny Full Suspension", price: "649 zł" },
+      { name: "Przegląd generalny hardtail", price: "449 zł" },
+      { name: "Przegląd podstawowy", price: "249 zł" },
     ],
   },
   {
     icon: Cog,
-    title: "Amortyzacja",
+    title: "Zawieszenie",
     items: [
-      { name: "Serwis amortyzatora przedniego", price: "od 120 zł" },
-      { name: "Serwis tylnego zawieszenia", price: "od 150 zł" },
-      { name: "Wymiana oleju", price: "80 zł" },
-    ],
-    note: "Cena zależna od modelu amortyzatora.",
-  },
-  {
-    icon: CircleDot,
-    title: "Koła",
-    items: [
-      { name: "Centrowanie koła", price: "60 zł" },
-      { name: "Wymiana szprychy", price: "15 zł" },
-      { name: "Montaż opony", price: "20 zł" },
-      { name: "Wymiana dętki", price: "25 zł" },
+      { name: "Duży serwis zawieszenia", price: "400 zł" },
+      { name: "Mały serwis zawieszenia", price: "200 zł" },
     ],
   },
   {
     icon: Settings,
     title: "Napęd",
     items: [
-      { name: "Wymiana łańcucha", price: "40 zł" },
-      { name: "Wymiana kasety", price: "30 zł" },
-      { name: "Wymiana suportu", price: "od 60 zł" },
-      { name: "Czyszczenie napędu", price: "50 zł" },
+      { name: "Założenie łańcucha + regulacja przerzutki", price: "80 zł" },
+      { name: "Mycie napędu", price: "80 zł" },
+      { name: "Regulacja przerzutki", price: "50 zł" },
+    ],
+  },
+  {
+    icon: CircleDot,
+    title: "Koła",
+    items: [
+      { name: "Montaż systemu tubeless", price: "150 zł" },
+      { name: "Zmiana opony tubeless", price: "50 zł" },
+      { name: "Centrowanie koła", price: "50 zł" },
+      { name: "Dolanie uszczelniacza", price: "40 zł" },
+      { name: "Wymiana dętki", price: "30 zł" },
+    ],
+  },
+  {
+    icon: Wrench,
+    title: "Hamulce i diagnostyka",
+    items: [
+      { name: "Diagnostyka Bosch", price: "200 zł" },
+      { name: "Serwis hamulca", price: "50 zł" },
+      { name: "Prostowanie haka przerzutki", price: "30 zł" },
     ],
   },
 ];
