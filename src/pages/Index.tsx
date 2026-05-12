@@ -262,7 +262,7 @@ const Index = () => {
               href="https://maps.google.com/?q=Kielnieńska+111+Gdańsk"
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex flex-col p-10 md:p-14 bg-primary border-t-2 border-accent/40 hover:border-accent transition-colors duration-300"
+              className="group flex flex-col p-10 md:p-14 bg-primary dark:bg-background border-t-2 border-accent/40 hover:border-accent transition-colors duration-300"
             >
               <MapPin className="h-7 w-7 mb-8 text-accent opacity-70" />
               <div className="text-xs font-medium opacity-60 uppercase tracking-[0.2em] mb-3">Gdańsk</div>
@@ -293,7 +293,7 @@ const Index = () => {
             {/* Kartuzy pickup card */}
             <a
               href={`tel:${PHONE_TEL}`}
-              className="group flex flex-col p-10 md:p-14 bg-primary border-t-2 border-accent/40 hover:border-accent transition-colors duration-300"
+              className="group flex flex-col p-10 md:p-14 bg-primary dark:bg-background border-t-2 border-accent/40 hover:border-accent transition-colors duration-300"
             >
               <MapPin className="h-7 w-7 mb-8 text-accent opacity-70" />
               <div className="text-xs font-medium opacity-60 uppercase tracking-[0.2em] mb-3">Kartuzy · Dowóz / odbiór</div>
