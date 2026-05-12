@@ -79,3 +79,14 @@ export interface BlockedTime {
   reason: string | null;
   created_at: string;
 }
+
+export type SurveyRole = 'wlasciciel' | 'serwisant_1' | 'serwisant_2';
+
+export type SurveyAnswers = Record<string, Record<string, string>>;
+
+export interface SurveyResponse {
+  id: string;
+  role: SurveyRole;
+  answers: SurveyAnswers;
+  submitted_at: string;
+}
