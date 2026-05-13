@@ -7,20 +7,49 @@ Dr Koło to serwis rowerowy specjalizujący się w naprawie i serwisowaniu rower
 ## Kontakt
 
 - Telefon: 511 061 221
-- Adres: Kielnieńska 111, Gdańsk 80-299
+- Adres główny: Kielnieńska 111, Gdańsk 80-299
+- Punkt odbioru: Słowackiego 36, Kartuzy (wcześniejszy kontakt telefoniczny wymagany)
 - Strona: https://drkolo.pl
 
-## Usługi
+## Godziny otwarcia (Gdańsk)
 
-- Przeglądy rowerów (podstawowy, rozszerzony, kompleksowy)
-- Naprawa rowerów (regulacja przerzutek, hamulców, wymiana linek)
-- Serwis amortyzatorów przednich i tylnych zawieszeń
-- Centrowanie kół, wymiana szprych i opon
-- Serwis napędu (łańcuch, kaseta, suport)
+- Poniedziałek – Piątek: 10:00 – 19:00
+- Sobota: 10:00 – 16:00
+- Niedziela: zamknięte
 
-## Cennik
+## Usługi i cennik
 
-Szczegółowy cennik dostępny pod adresem: https://drkolo.pl/cennik
+### Przeglądy
+- Przegląd generalny Full Suspension: 649 zł
+- Przegląd generalny hardtail: 449 zł
+- Przegląd podstawowy: 249 zł
+
+### Zawieszenie
+- Duży serwis zawieszenia: 400 zł
+- Mały serwis zawieszenia: 200 zł
+
+### Napęd
+- Założenie łańcucha + regulacja przerzutki: 80 zł
+- Mycie napędu: 80 zł
+- Regulacja przerzutki: 50 zł
+
+### Koła
+- Montaż systemu tubeless: 150 zł
+- Zmiana opony tubeless: 50 zł
+- Centrowanie koła: 50 zł
+- Dolanie uszczelniacza: 40 zł
+- Wymiana dętki: 30 zł
+
+### Hamulce i diagnostyka
+- Diagnostyka Bosch: 200 zł
+- Serwis hamulca: 50 zł
+- Prostowanie haka przerzutki: 30 zł
+
+Szczegółowy cennik: https://drkolo.pl/cennik
+
+## Rezerwacja
+
+Wizyty można rezerwować online: https://drkolo.pl/rezerwacja
 
 ## Obszar działania
 

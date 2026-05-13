@@ -117,9 +117,35 @@ const Cennik = () => {
     canonical.href = "https://drkolo.pl/cennik";
     const desc = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     if (desc) desc.setAttribute("content", "Cennik serwisu rowerowego Dr Koło — Gdańsk, Kartuzy. Przeglądy, naprawy, serwis amortyzatorów, koła, napęd. Sprawdź aktualne ceny.");
+
+    const schema = document.createElement("script");
+    schema.type = "application/ld+json";
+    schema.id = "cennik-schema";
+    schema.text = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": "Cennik serwisu rowerowego Dr Koło",
+      "description": "Aktualne ceny usług serwisu rowerowego Dr Koło w Gdańsku i Kartuzach.",
+      "url": "https://drkolo.pl/cennik",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "item": { "@type": "Service", "name": "Przegląd generalny Full Suspension", "offers": { "@type": "Offer", "price": "649", "priceCurrency": "PLN" } } },
+        { "@type": "ListItem", "position": 2, "item": { "@type": "Service", "name": "Przegląd generalny hardtail", "offers": { "@type": "Offer", "price": "449", "priceCurrency": "PLN" } } },
+        { "@type": "ListItem", "position": 3, "item": { "@type": "Service", "name": "Przegląd podstawowy", "offers": { "@type": "Offer", "price": "249", "priceCurrency": "PLN" } } },
+        { "@type": "ListItem", "position": 4, "item": { "@type": "Service", "name": "Duży serwis zawieszenia", "offers": { "@type": "Offer", "price": "400", "priceCurrency": "PLN" } } },
+        { "@type": "ListItem", "position": 5, "item": { "@type": "Service", "name": "Mały serwis zawieszenia", "offers": { "@type": "Offer", "price": "200", "priceCurrency": "PLN" } } },
+        { "@type": "ListItem", "position": 6, "item": { "@type": "Service", "name": "Założenie łańcucha + regulacja przerzutki", "offers": { "@type": "Offer", "price": "80", "priceCurrency": "PLN" } } },
+        { "@type": "ListItem", "position": 7, "item": { "@type": "Service", "name": "Mycie napędu", "offers": { "@type": "Offer", "price": "80", "priceCurrency": "PLN" } } },
+        { "@type": "ListItem", "position": 8, "item": { "@type": "Service", "name": "Montaż systemu tubeless", "offers": { "@type": "Offer", "price": "150", "priceCurrency": "PLN" } } },
+        { "@type": "ListItem", "position": 9, "item": { "@type": "Service", "name": "Centrowanie koła", "offers": { "@type": "Offer", "price": "50", "priceCurrency": "PLN" } } },
+        { "@type": "ListItem", "position": 10, "item": { "@type": "Service", "name": "Serwis hamulca", "offers": { "@type": "Offer", "price": "50", "priceCurrency": "PLN" } } }
+      ]
+    });
+    document.head.appendChild(schema);
+
     return () => {
       if (canonical) canonical.href = "https://drkolo.pl/";
       if (desc) desc.setAttribute("content", "Dr Koło — profesjonalny serwis rowerowy w Gdańsku i Kartuzach. Naprawa rowerów MTB, szosowych, gravel, elektrycznych. Serwis amortyzatorów. Tel. 511 061 221.");
+      document.getElementById("cennik-schema")?.remove();
     };
   }, []);
 

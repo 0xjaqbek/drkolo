@@ -19,46 +19,83 @@
     <meta property="og:url" content="https://drkolo.pl/" />
     <meta property="og:title" content="Dr Koło — Profesjonalny Serwis Rowerowy | Gdańsk · Kartuzy" />
     <meta property="og:description" content="Profesjonalny serwis rowerowy w Gdańsku i Kartuzach. Naprawa rowerów MTB, szosowych, gravel, elektrycznych. Serwis amortyzatorów." />
+    <meta property="og:image" content="https://drkolo.pl/og-image.jpg" />
+    <meta property="og:image:alt" content="Dr Koło — Serwis Rowerowy Gdańsk" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Dr Koło — Profesjonalny Serwis Rowerowy | Gdańsk · Kartuzy" />
     <meta name="twitter:description" content="Profesjonalny serwis rowerowy w Gdańsku i Kartuzach. Naprawa rowerów MTB, szosowych, gravel, elektrycznych. Serwis amortyzatorów." />
+    <meta name="twitter:image" content="https://drkolo.pl/og-image.jpg" />
+    <meta name="twitter:image:alt" content="Dr Koło — Serwis Rowerowy Gdańsk" />
 
     <!-- JSON-LD: LocalBusiness -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": ["LocalBusiness", "BicycleStore"],
-      "name": "Dr Koło",
-      "description": "Profesjonalny serwis rowerowy w Gdańsku i Kartuzach. Naprawa rowerów każdego typu, serwis amortyzatorów, przeglądy techniczne.",
-      "url": "https://drkolo.pl",
-      "telephone": "+48511061221",
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": "Kielnieńska 111",
-        "addressLocality": "Gdańsk",
-        "postalCode": "80-299",
-        "addressCountry": "PL"
-      },
-      "areaServed": [
-        { "@type": "City", "name": "Gdańsk" },
-        { "@type": "City", "name": "Kartuzy" }
-      ],
-      "priceRange": "$$",
-      "hasOfferCatalog": {
-        "@type": "OfferCatalog",
-        "name": "Usługi serwisu rowerowego",
-        "itemListElement": [
-          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Przegląd roweru" } },
-          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Naprawa roweru" } },
-          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Serwis amortyzatorów" } },
-          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Centrowanie kół" } },
-          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Regulacja przerzutek i hamulców" } }
-        ]
-      },
-      "sameAs": [
-        "https://drkolo.pl"
+      "@graph": [
+        {
+          "@type": ["LocalBusiness", "BicycleStore"],
+          "@id": "https://drkolo.pl/#business",
+          "name": "Dr Koło",
+          "description": "Profesjonalny serwis rowerowy w Gdańsku i Kartuzach. Naprawa rowerów każdego typu, serwis amortyzatorów, przeglądy techniczne.",
+          "url": "https://drkolo.pl",
+          "telephone": "+48511061221",
+          "image": "https://drkolo.pl/og-image.jpg",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://drkolo.pl/icon_drkolo.png"
+          },
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Kielnieńska 111",
+            "addressLocality": "Gdańsk",
+            "postalCode": "80-299",
+            "addressCountry": "PL"
+          },
+          "openingHours": [
+            "Mo-Fr 10:00-19:00",
+            "Sa 10:00-16:00"
+          ],
+          "hasMap": "https://maps.google.com/?q=Kielnieńska+111+Gdańsk",
+          "areaServed": [
+            { "@type": "City", "name": "Gdańsk" },
+            { "@type": "City", "name": "Kartuzy" },
+            { "@type": "AdministrativeArea", "name": "Trójmiasto" }
+          ],
+          "priceRange": "$$",
+          "currenciesAccepted": "PLN",
+          "hasOfferCatalog": {
+            "@type": "OfferCatalog",
+            "name": "Usługi serwisu rowerowego",
+            "itemListElement": [
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Przegląd roweru" } },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Naprawa roweru" } },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Serwis amortyzatorów" } },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Centrowanie kół" } },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Regulacja przerzutek i hamulców" } }
+            ]
+          },
+          "sameAs": [
+            "https://drkolo.pl"
+          ]
+        },
+        {
+          "@type": ["LocalBusiness", "BicycleStore"],
+          "@id": "https://drkolo.pl/#kartuzy",
+          "name": "Dr Koło — Kartuzy",
+          "branchOf": { "@id": "https://drkolo.pl/#business" },
+          "telephone": "+48511061221",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Słowackiego 36",
+            "addressLocality": "Kartuzy",
+            "addressCountry": "PL"
+          },
+          "description": "Punkt odbioru i dowóz rowerów w Kartuzach. Wymagany wcześniejszy kontakt telefoniczny."
+        }
       ]
     }
     </script>
