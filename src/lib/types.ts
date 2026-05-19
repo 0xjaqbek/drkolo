@@ -80,6 +80,15 @@ export interface BlockedTime {
   created_at: string;
 }
 
+export interface PageView {
+  id: string;
+  path: string;
+  referrer: string | null;
+  session_id: string;
+  user_agent: string | null;
+  created_at: string;
+}
+
 export type SurveyAnswers = Record<string, Record<string, string>>;
 
 export interface SurveyResponse {
