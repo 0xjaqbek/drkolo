@@ -32,6 +32,8 @@ export function usePageView() {
       referrer,
       session_id: getSessionId(),
       user_agent: navigator.userAgent,
+    }).then(({ error }) => {
+      if (error) console.error('[analytics] insert failed:', error);
     });
   }, [location.pathname]);
 }
