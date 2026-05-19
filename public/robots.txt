@@ -1,4 +1,10 @@
 User-agent: *
 Allow: /
+Disallow: /analytics
+Disallow: /kalendarz
+Disallow: /chat-admin
+Disallow: /kwestionariusz
+Disallow: /kwestionariusz-odp
+Disallow: /zlecenie
 
 Sitemap: https://drkolo.pl/sitemap.xml
