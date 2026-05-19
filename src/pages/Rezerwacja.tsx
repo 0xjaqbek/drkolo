@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format, isBefore, startOfDay } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { SiteHeader } from '@/components/SiteHeader';
@@ -17,6 +17,27 @@ import { toast } from 'sonner';
 const SERVICE_PHONE = "+48511061221";
 
 export default function Rezerwacja() {
+  useEffect(() => {
+    document.title = "Umów wizytę — Dr Koło: Serwis Rowerowy Gdańsk";
+
+    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    if (!canonical) {
+      canonical = document.createElement("link");
+      canonical.rel = "canonical";
+      document.head.appendChild(canonical);
+    }
+    canonical.href = "https://drkolo.pl/rezerwacja";
+
+    const desc = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+    if (desc) desc.setAttribute("content", "Zarezerwuj termin w serwisie rowerowym Dr Koło w Gdańsku. Wybierz datę, godzinę i opisz usterkę — odpiszemy SMS-em.");
+
+    return () => {
+      document.title = "Dr Koło — Profesjonalny Serwis Rowerowy | Gdańsk · Kartuzy";
+      if (canonical) canonical.href = "https://drkolo.pl/";
+      if (desc) desc.setAttribute("content", "Dr Koło — profesjonalny serwis rowerowy w Gdańsku i Kartuzach. Naprawa rowerów MTB, szosowych, gravel, elektrycznych. Serwis amortyzatorów. Tel. 511 061 221.");
+    };
+  }, []);
+
   const [step, setStep] = useState(1);
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [time, setTime] = useState<string | null>(null);
