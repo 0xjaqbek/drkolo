@@ -22,4 +22,11 @@ describe("Cennik", () => {
     render(<MemoryRouter><Cennik /></MemoryRouter>);
     expect(screen.getByText("Wróć")).toBeInTheDocument();
   });
+
+  it("renders keyword-optimized h1", () => {
+    render(<MemoryRouter><Cennik /></MemoryRouter>);
+    expect(
+      screen.getByRole('heading', { level: 1, name: /Cennik serwisu rowerowego/i })
+    ).toBeInTheDocument();
+  });
 });

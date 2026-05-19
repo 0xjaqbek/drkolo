@@ -170,8 +170,11 @@ const Cennik = () => {
               <div>
                 <div className="text-sm font-medium text-accent uppercase tracking-widest mb-3">Cennik</div>
                 <h1 className="font-display font-bold text-4xl md:text-6xl max-w-2xl text-balance">
-                  Przejrzyste ceny, bez niespodzianek.
+                  Cennik serwisu rowerowego
                 </h1>
+                <p className="text-muted-foreground mt-2 text-lg">
+                  Przejrzyste ceny, bez niespodzianek.
+                </p>
               </div>
               <p className="text-muted-foreground max-w-sm">
                 Poniższe ceny mają charakter orientacyjny. Ostateczna wycena po oględzinach roweru.
