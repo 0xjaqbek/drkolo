@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNoIndex } from "@/hooks/useNoIndex";
 import { useNavigate } from 'react-router-dom';
 import { useSession } from '@/hooks/useSession';
 import { useCatalog } from '@/hooks/useZlecenie';
@@ -21,6 +22,7 @@ import { X, Plus, ListOrdered, FilePlus } from 'lucide-react';
 type Mode = 'choose' | 'create' | 'browse';
 
 export default function CreateZlecenie() {
+  useNoIndex();
   const { authenticated, login } = useSession();
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState(false);

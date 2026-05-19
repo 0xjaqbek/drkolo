@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNoIndex } from "@/hooks/useNoIndex";
 import { format, isBefore, startOfDay } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { SiteHeader } from '@/components/SiteHeader';
@@ -24,6 +25,7 @@ import { Calendar as CalendarIcon, Plus, Settings, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function KalendarzAdmin() {
+  useNoIndex();
   const { authenticated, login, logout } = useSession();
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState(false);

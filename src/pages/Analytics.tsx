@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNoIndex } from "@/hooks/useNoIndex";
 import { SiteHeader } from '@/components/SiteHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,7 @@ const RANGE_OPTIONS: { label: string; value: AnalyticsRange }[] = [
 ];
 
 export default function Analytics() {
+  useNoIndex();
   const [password, setPassword] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
   const [authError, setAuthError] = useState(false);

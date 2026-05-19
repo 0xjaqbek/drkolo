@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNoIndex } from "@/hooks/useNoIndex";
 import { SiteHeader } from '@/components/SiteHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +7,7 @@ import { useFetchAllSurveys } from '@/hooks/useSurvey';
 import { SURVEY_SECTIONS } from '@/lib/surveyQuestions';
 
 export default function KwestionariuszOdp() {
+  useNoIndex();
   const [password, setPassword] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
   const [authError, setAuthError] = useState(false);

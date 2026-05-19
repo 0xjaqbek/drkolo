@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNoIndex } from "@/hooks/useNoIndex";
 import { SiteHeader } from '@/components/SiteHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,7 @@ import {
 } from '@/lib/chatApi';
 
 export default function ChatAdmin() {
+  useNoIndex();
   const [password, setPassword] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
   const [authError, setAuthError] = useState(false);

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNoIndex } from "@/hooks/useNoIndex";
 import { useParams } from 'react-router-dom';
 import { useSession } from '@/hooks/useSession';
 import { useZlecenie } from '@/hooks/useZlecenie';
@@ -12,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import type { ZlecenieStatus } from '@/lib/types';
 
 export default function ZlecenieView() {
+  useNoIndex();
   const { hash } = useParams<{ hash: string }>();
   const { authenticated } = useSession();
   const [orderSheetOpen, setOrderSheetOpen] = useState(false);
