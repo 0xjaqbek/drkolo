@@ -1,0 +1,256 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Dr Koło Bike Service API",
+    "description": "API for checking availability, browsing services, booking appointments, and looking up appointment status at Dr Koło bicycle repair shop in Gdańsk, Poland.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Dr Koło",
+      "url": "https://drkolo.pl"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://iftyvvymlsdercmyagpe.supabase.co/functions/v1",
+      "description": "Production"
+    }
+  ],
+  "paths": {
+    "/availability": {
+      "get": {
+        "operationId": "getAvailability",
+        "summary": "Get available time slots for a date",
+        "description": "Returns all available 30-minute appointment slots for the given date. Returns an empty slots array if the shop is closed that day.",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "description": "Date in YYYY-MM-DD format",
+            "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "example": "2026-05-25" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Availability for the requested date",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AvailabilityResponse" },
+                "examples": {
+                  "open": {
+                    "value": {
+                      "date": "2026-05-25",
+                      "open": "08:00",
+                      "close": "17:00",
+                      "slots": ["08:00", "08:30", "09:00"]
+                    }
+                  },
+                  "closed": {
+                    "value": { "date": "2026-05-24", "open": null, "close": null, "slots": [] }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid date parameter",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          }
+        },
+        "security": [{ "anonKey": [] }]
+      }
+    },
+    "/services": {
+      "get": {
+        "operationId": "getServices",
+        "summary": "Get service catalog and pricing",
+        "description": "Returns all available services grouped by category with prices in PLN.",
+        "responses": {
+          "200": {
+            "description": "Service catalog",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ServicesResponse" }
+              }
+            }
+          }
+        },
+        "security": [{ "anonKey": [] }]
+      }
+    },
+    "/appointments": {
+      "post": {
+        "operationId": "createAppointment",
+        "summary": "Book a service appointment",
+        "description": "Creates an appointment inquiry. The shop will call the customer at the provided phone number to confirm. Status will be 'zapytanie' (inquiry) until confirmed by shop.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateAppointmentRequest" },
+              "example": {
+                "date": "2026-05-25",
+                "time": "10:00",
+                "customer_name": "Jan Kowalski",
+                "customer_phone": "+48600123456",
+                "bike_manufacturer": "Trek",
+                "bike_model": "Fuel EX 8",
+                "service_note": "Serwis amortyzatora przedniego"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Appointment inquiry created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreateAppointmentResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "409": {
+            "description": "Time slot unavailable",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          }
+        },
+        "security": [{ "anonKey": [] }]
+      },
+      "get": {
+        "operationId": "getAppointments",
+        "summary": "Look up appointments by customer phone",
+        "description": "Returns all appointments for the given phone number, most recent first. Use this to check the status of a booking.",
+        "parameters": [
+          {
+            "name": "phone",
+            "in": "query",
+            "required": true,
+            "description": "Customer phone number (e.g. +48600123456)",
+            "schema": { "type": "string", "example": "+48600123456" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Appointments for the phone number",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AppointmentsResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing phone parameter",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          }
+        },
+        "security": [{ "anonKey": [] }]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AvailabilityResponse": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string" },
+          "open": { "type": ["string", "null"], "description": "Shop opening time HH:MM or null if closed" },
+          "close": { "type": ["string", "null"] },
+          "slots": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Available 30-minute slots in HH:MM format"
+          }
+        }
+      },
+      "ServicesResponse": {
+        "type": "object",
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "services": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": { "type": "string" },
+                      "price_pln": { "type": "integer" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "CreateAppointmentRequest": {
+        "type": "object",
+        "required": ["date", "time", "customer_name", "customer_phone", "bike_manufacturer", "bike_model", "service_note"],
+        "properties": {
+          "date": { "type": "string", "description": "Appointment date YYYY-MM-DD" },
+          "time": { "type": "string", "description": "Arrival time HH:MM (must be a slot from /availability)" },
+          "customer_name": { "type": "string" },
+          "customer_phone": { "type": "string", "description": "Customer phone — shop will call to confirm" },
+          "bike_manufacturer": { "type": "string", "description": "Bike brand e.g. Trek, Specialized" },
+          "bike_model": { "type": "string" },
+          "service_note": { "type": "string", "description": "Description of what needs to be done" }
+        }
+      },
+      "CreateAppointmentResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "type": "string", "enum": ["zapytanie"] },
+          "message": { "type": "string" }
+        }
+      },
+      "AppointmentsResponse": {
+        "type": "object",
+        "properties": {
+          "appointments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "date": { "type": "string" },
+                "time": { "type": "string" },
+                "status": {
+                  "type": "string",
+                  "enum": ["zapytanie", "potwierdzone", "odrzucone", "zakonczone"],
+                  "description": "zapytanie=inquiry, potwierdzone=confirmed, odrzucone=rejected, zakonczone=completed"
+                },
+                "bike_manufacturer": { "type": "string" },
+                "bike_model": { "type": "string" },
+                "service_note": { "type": ["string", "null"] },
+                "created_at": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "code": { "type": "string" }
+        }
+      }
+    },
+    "securitySchemes": {
+      "anonKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization",
+        "description": "Supabase anon key as 'Bearer <key>'. Public key — safe to use client-side."
+      }
+    }
+  }
+}

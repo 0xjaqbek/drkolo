@@ -1,0 +1,17 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Dr Koło Serwis Rowerowy",
+  "name_for_model": "drkolo_bike_service",
+  "description_for_human": "Book a bicycle service appointment at Dr Koło bike shop in Gdańsk, Poland.",
+  "description_for_model": "Use this plugin to interact with Dr Koło bicycle repair shop in Gdańsk, Poland. You can check available appointment slots for a specific date, browse the service catalog with prices in PLN, create a booking inquiry (the shop will call the customer to confirm), and look up existing appointment status by customer phone number.",
+  "auth": {
+    "type": "none"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://drkolo.pl/openapi.json"
+  },
+  "logo_url": "https://drkolo.pl/og-image.png",
+  "contact_email": "kontakt@drkolo.pl",
+  "legal_info_url": "https://drkolo.pl"
+}
