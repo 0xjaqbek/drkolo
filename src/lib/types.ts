@@ -45,7 +45,7 @@ export interface CatalogItem {
 }
 
 export type AppointmentStatus = 'zapytanie' | 'potwierdzone' | 'odrzucone' | 'zakonczone';
-export type AppointmentSource = 'online' | 'manual';
+export type AppointmentSource = 'online' | 'manual' | 'ai_agent';
 
 export interface ServiceAppointment {
   id: string;
