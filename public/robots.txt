@@ -7,4 +7,20 @@ Disallow: /kwestionariusz
 Disallow: /kwestionariusz-odp
 Disallow: /zlecenie
 
+# AI search crawlers — explicitly allowed
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
 Sitemap: https://drkolo.pl/sitemap.xml
