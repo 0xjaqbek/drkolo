@@ -108,6 +108,55 @@
       ]
     }
     </script>
+    <!-- JSON-LD: FAQ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Ile kosztuje serwis roweru w Gdańsku?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "W serwisie Dr Koło w Gdańsku przegląd podstawowy roweru kosztuje 249 zł. Przegląd generalny hardtail to 449 zł, a Full Suspension 649 zł. Drobniejsze usługi: regulacja przerzutki 50 zł, wymiana dętki 30 zł, serwis hamulca 50 zł, centrowanie koła 50 zł."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Gdzie jest serwis rowerowy Dr Koło w Gdańsku?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Dr Koło mieści się przy ul. Kielnieńskiej 111 w Gdańsku (80-299). Posiadamy też punkt odbioru w Kartuzach przy ul. Słowackiego 36. Kontakt telefoniczny: 511 061 221."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Jak umówić wizytę w serwisie rowerowym Dr Koło?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Wizytę można zarezerwować online na stronie drkolo.pl/rezerwacja — wystarczy wybrać datę, godzinę i opisać usterkę. Serwis oddzwoni, aby potwierdzić termin. Można też zadzwonić bezpośrednio: 511 061 221."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Jakie rowery naprawia serwis Dr Koło?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Dr Koło serwisuje wszystkie typy rowerów: górskie MTB, szosowe, gravel, miejskie, dziecięce i elektryczne. Specjalizujemy się w serwisie amortyzatorów przednich i tylnych zawieszeń, a także wykonujemy diagnostykę Bosch dla rowerów elektrycznych."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Jakie są godziny otwarcia serwisu rowerowego Dr Koło?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Serwis Dr Koło w Gdańsku jest czynny od poniedziałku do piątku w godzinach 10:00–19:00 oraz w soboty 10:00–16:00. W niedzielę serwis jest nieczynny."
+          }
+        }
+      ]
+    }
+    </script>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -132,7 +181,73 @@
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Static fallback for crawlers that do not execute JavaScript -->
+      <header>
+        <a href="/">Dr Koło — Serwis Rowerowy Gdańsk</a>
+        <nav>
+          <a href="/cennik">Cennik</a>
+          <a href="/rezerwacja">Rezerwacja</a>
+        </nav>
+      </header>
+      <main>
+        <h1>Dr Koło — Profesjonalny Serwis Rowerowy w Gdańsku</h1>
+        <p>Specjalizujemy się w naprawie i serwisowaniu rowerów każdego typu: MTB, szosowych, gravel, miejskich, dziecięcych i elektrycznych. Serwisujemy amortyzatory i tylne zawieszenia. Obsługujemy klientów w Gdańsku i Kartuzach.</p>
+
+        <h2>Usługi i cennik serwisu rowerowego</h2>
+        <h3>Przeglądy</h3>
+        <ul>
+          <li>Przegląd generalny Full Suspension — 649 zł</li>
+          <li>Przegląd generalny hardtail — 449 zł</li>
+          <li>Przegląd podstawowy — 249 zł</li>
+        </ul>
+        <h3>Zawieszenie</h3>
+        <ul>
+          <li>Duży serwis zawieszenia — 400 zł</li>
+          <li>Mały serwis zawieszenia — 200 zł</li>
+        </ul>
+        <h3>Napęd</h3>
+        <ul>
+          <li>Założenie łańcucha i regulacja przerzutki — 80 zł</li>
+          <li>Mycie napędu — 80 zł</li>
+          <li>Regulacja przerzutki — 50 zł</li>
+        </ul>
+        <h3>Koła</h3>
+        <ul>
+          <li>Montaż systemu tubeless — 150 zł</li>
+          <li>Zmiana opony tubeless — 50 zł</li>
+          <li>Centrowanie koła — 50 zł</li>
+          <li>Dolanie uszczelniacza — 40 zł</li>
+          <li>Wymiana dętki — 30 zł</li>
+        </ul>
+        <h3>Hamulce i diagnostyka</h3>
+        <ul>
+          <li>Diagnostyka Bosch — 200 zł</li>
+          <li>Serwis hamulca — 50 zł</li>
+          <li>Prostowanie haka przerzutki — 30 zł</li>
+        </ul>
+
+        <h2>Często zadawane pytania</h2>
+        <h3>Ile kosztuje serwis roweru w Gdańsku?</h3>
+        <p>Przegląd podstawowy roweru kosztuje 249 zł. Przegląd generalny hardtail to 449 zł, a Full Suspension 649 zł. Drobniejsze usługi jak regulacja przerzutki to 50 zł, wymiana dętki 30 zł.</p>
+        <h3>Gdzie jest serwis rowerowy Dr Koło w Gdańsku?</h3>
+        <p>Dr Koło mieści się przy ul. Kielnieńskiej 111 w Gdańsku (80-299). Posiadamy też punkt odbioru w Kartuzach przy ul. Słowackiego 36 — wymagany wcześniejszy kontakt telefoniczny.</p>
+        <h3>Jak umówić wizytę w serwisie rowerowym Dr Koło?</h3>
+        <p>Wizytę można zarezerwować online na stronie <a href="/rezerwacja">drkolo.pl/rezerwacja</a> lub telefonicznie pod numer 511 061 221.</p>
+        <h3>Jakie rowery naprawia Dr Koło?</h3>
+        <p>Serwisujemy wszystkie typy rowerów: górskie MTB, szosowe, gravel, miejskie, dziecięce i elektryczne. Specjalizujemy się w serwisie amortyzatorów i tylnych zawieszeń.</p>
+        <h3>Jakie są godziny otwarcia serwisu rowerowego Dr Koło?</h3>
+        <p>Jesteśmy czynni od poniedziałku do piątku w godzinach 10:00–19:00 oraz w soboty 10:00–16:00. W niedzielę serwis jest nieczynny.</p>
+
+        <h2>Kontakt</h2>
+        <address>
+          <p>Dr Koło Serwis Rowerowy</p>
+          <p>ul. Kielnieńska 111, 80-299 Gdańsk</p>
+          <p>Tel.: <a href="tel:+48511061221">511 061 221</a></p>
+          <p>Rezerwacja online: <a href="/rezerwacja">drkolo.pl/rezerwacja</a></p>
+        </address>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
