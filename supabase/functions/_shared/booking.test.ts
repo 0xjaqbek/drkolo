@@ -11,6 +11,7 @@ import {
   validateCalendarDate,
   validateCreateAppointment,
 } from "./booking.ts";
+import { verifyAdminPassword } from "./admin-auth.ts";
 import { json, jsonError, methodNotAllowed, preflight } from "./http.ts";
 import { handleServices } from "../services/index.ts";
 import {
@@ -23,6 +24,10 @@ import {
   getWarsawDate,
   handleAppointments,
 } from "../appointments/index.ts";
+import {
+  type CalendarAdminDependencies,
+  handleCalendarAdmin,
+} from "../calendar-admin/index.ts";
 
 const validBody = {
   date: "2026-06-10",
@@ -33,6 +38,31 @@ const validBody = {
   bike_model: " Fuel EX ",
   service_note: " Full service ",
 };
+
+describe("verifyAdminPassword", () => {
+  it("accepts equal non-empty passwords", async () => {
+    await expect(
+      verifyAdminPassword("correct", "correct"),
+    ).resolves.toBe(true);
+  });
+
+  it("rejects unequal passwords", async () => {
+    await expect(
+      verifyAdminPassword("wrong", "correct"),
+    ).resolves.toBe(false);
+  });
+
+  it.each([
+    ["", "correct"],
+    ["correct", ""],
+    [undefined, "correct"],
+    ["correct", undefined],
+  ])("rejects empty or missing values", async (supplied, configured) => {
+    await expect(
+      verifyAdminPassword(supplied, configured),
+    ).resolves.toBe(false);
+  });
+});
 
 function expectApiProblem(
   action: () => unknown,
@@ -841,14 +871,777 @@ describe("appointments transport and production adapters", () => {
   });
 });
 
+const calendarRowId = "11111111-1111-4111-8111-111111111111";
+const calendarAdminPassword = "server-secret";
+
+const workingHoursRow = {
+  id: calendarRowId,
+  day_of_week: 1,
+  open_time: "10:00:00",
+  close_time: "19:00:00",
+  is_open: true,
+};
+
+const adminAppointmentRow = {
+  id: calendarRowId,
+  appointment_date: "2026-06-11",
+  arrival_time: "10:30:00",
+  customer_name: "Jan Kowalski",
+  customer_phone: "+48 600-123-456",
+  bike_manufacturer: "Trek",
+  bike_model: "Fuel EX",
+  service_note: "Full service",
+  status: "zapytanie",
+  estimated_duration_minutes: 60,
+  technician_note: "Check the fork",
+  source: "online",
+  created_at: "2026-06-10T12:00:00Z",
+};
+
+const blockedTimeRow = {
+  id: calendarRowId,
+  block_date: "2026-06-11",
+  start_time: "12:00:00",
+  end_time: "13:00:00",
+  reason: "Lunch",
+  created_at: "2026-06-10T12:00:00Z",
+};
+
+function calendarDependencies(
+  overrides: Partial<CalendarAdminDependencies> = {},
+): CalendarAdminDependencies {
+  return {
+    adminPassword: calendarAdminPassword,
+    listWorkingHours: vi.fn().mockResolvedValue([workingHoursRow]),
+    updateWorkingHours: vi.fn().mockResolvedValue(workingHoursRow),
+    listAppointments: vi.fn().mockResolvedValue([adminAppointmentRow]),
+    listPendingAppointments: vi.fn().mockResolvedValue([
+      adminAppointmentRow,
+    ]),
+    createAppointment: vi.fn().mockResolvedValue(adminAppointmentRow),
+    updateAppointment: vi.fn().mockResolvedValue(adminAppointmentRow),
+    listBlockedTimes: vi.fn().mockResolvedValue([blockedTimeRow]),
+    createBlockedTime: vi.fn().mockResolvedValue(blockedTimeRow),
+    deleteBlockedTime: vi.fn().mockResolvedValue(true),
+    ...overrides,
+  };
+}
+
+function calendarRequest(
+  action: string,
+  init: RequestInit = {},
+  password: string | null = calendarAdminPassword,
+): Request {
+  const headers = new Headers(init.headers);
+  if (password !== null) {
+    headers.set("X-Admin-Password", password);
+  }
+
+  return new Request(
+    `https://example.test/calendar-admin?action=${action}`,
+    { ...init, headers },
+  );
+}
+
+function calendarJsonRequest(
+  action: string,
+  method: "POST" | "PATCH",
+  body: unknown,
+): Request {
+  return calendarRequest(action, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+function expectNoCalendarDatabaseCalls(
+  deps: CalendarAdminDependencies,
+): void {
+  expect(deps.listWorkingHours).not.toHaveBeenCalled();
+  expect(deps.updateWorkingHours).not.toHaveBeenCalled();
+  expect(deps.listAppointments).not.toHaveBeenCalled();
+  expect(deps.listPendingAppointments).not.toHaveBeenCalled();
+  expect(deps.createAppointment).not.toHaveBeenCalled();
+  expect(deps.updateAppointment).not.toHaveBeenCalled();
+  expect(deps.listBlockedTimes).not.toHaveBeenCalled();
+  expect(deps.createBlockedTime).not.toHaveBeenCalled();
+  expect(deps.deleteBlockedTime).not.toHaveBeenCalled();
+}
+
+describe("calendar admin authentication", () => {
+  it.each([
+    ["missing header", null, calendarAdminPassword],
+    ["wrong password", "wrong-secret", calendarAdminPassword],
+    ["missing configuration", calendarAdminPassword, undefined],
+  ])(
+    "returns the same 401 before routing or database access for %s",
+    async (_label, supplied, configured) => {
+      const deps = calendarDependencies({ adminPassword: configured });
+      const response = await handleCalendarAdmin(
+        calendarRequest("unknown-private-action", {}, supplied),
+        deps,
+      );
+
+      expect(response.status).toBe(401);
+      await expect(response.json()).resolves.toEqual({
+        error: "Unauthorized",
+        code: "UNAUTHORIZED",
+      });
+      expectNoCalendarDatabaseCalls(deps);
+    },
+  );
+
+  it("verifies a correct password without database access", async () => {
+    const deps = calendarDependencies();
+    const response = await handleCalendarAdmin(
+      calendarRequest("verify"),
+      deps,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      authenticated: true,
+    });
+    expectNoCalendarDatabaseCalls(deps);
+  });
+
+  it("allows unauthenticated CORS preflight without database access", async () => {
+    const deps = calendarDependencies();
+    const response = await handleCalendarAdmin(
+      calendarRequest("appointments", { method: "OPTIONS" }, null),
+      deps,
+    );
+
+    expect(response.status).toBe(204);
+    expectNoCalendarDatabaseCalls(deps);
+  });
+});
+
+describe("calendar admin route mapping", () => {
+  it("maps GET working-hours and returns explicit fields", async () => {
+    const listWorkingHours = vi.fn().mockResolvedValue([
+      { ...workingHoursRow, internal_secret: "must not leak" },
+    ]);
+    const response = await handleCalendarAdmin(
+      calendarRequest("working-hours"),
+      calendarDependencies({ listWorkingHours }),
+    );
+
+    expect(listWorkingHours).toHaveBeenCalledWith();
+    await expect(response.json()).resolves.toEqual([workingHoursRow]);
+  });
+
+  it("maps PATCH working-hours by validated UUID", async () => {
+    const updateWorkingHours = vi.fn().mockResolvedValue(workingHoursRow);
+    const response = await handleCalendarAdmin(
+      calendarJsonRequest(
+        `working-hours&id=${calendarRowId}`,
+        "PATCH",
+        {
+          open_time: "10:00",
+          close_time: "19:00",
+          is_open: true,
+        },
+      ),
+      calendarDependencies({ updateWorkingHours }),
+    );
+
+    expect(updateWorkingHours).toHaveBeenCalledWith(calendarRowId, {
+      open_time: "10:00",
+      close_time: "19:00",
+      is_open: true,
+    });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual(workingHoursRow);
+  });
+
+  it("maps GET appointments by date with all admin component fields", async () => {
+    const listAppointments = vi.fn().mockResolvedValue([
+      {
+        ...adminAppointmentRow,
+        customer_phone_normalized: "48600123456",
+        lookup_token_hash: "must not leak",
+      },
+    ]);
+    const response = await handleCalendarAdmin(
+      calendarRequest("appointments&date=2026-06-11"),
+      calendarDependencies({ listAppointments }),
+    );
+
+    expect(listAppointments).toHaveBeenCalledWith("2026-06-11");
+    await expect(response.json()).resolves.toEqual([adminAppointmentRow]);
+  });
+
+  it("maps GET pending appointments", async () => {
+    const listPendingAppointments = vi.fn().mockResolvedValue([
+      adminAppointmentRow,
+    ]);
+    const response = await handleCalendarAdmin(
+      calendarRequest("pending"),
+      calendarDependencies({ listPendingAppointments }),
+    );
+
+    expect(listPendingAppointments).toHaveBeenCalledWith();
+    await expect(response.json()).resolves.toEqual([adminAppointmentRow]);
+  });
+
+  it("maps POST appointments and forces confirmed manual values", async () => {
+    const createdRow = {
+      ...adminAppointmentRow,
+      status: "potwierdzone",
+      source: "manual",
+      technician_note: null,
+    };
+    const createAppointment = vi.fn().mockResolvedValue(createdRow);
+    const response = await handleCalendarAdmin(
+      calendarJsonRequest("appointments", "POST", {
+        appointment_date: "2026-06-11",
+        arrival_time: "10:30",
+        customer_name: " Jan Kowalski ",
+        customer_phone: " +48 600-123-456 ",
+        bike_manufacturer: " Trek ",
+        bike_model: " Fuel EX ",
+        service_note: " Full service ",
+        estimated_duration_minutes: 60,
+      }),
+      calendarDependencies({ createAppointment }),
+    );
+
+    expect(createAppointment).toHaveBeenCalledWith({
+      appointment_date: "2026-06-11",
+      arrival_time: "10:30",
+      customer_name: "Jan Kowalski",
+      customer_phone: "+48 600-123-456",
+      customer_phone_normalized: "48600123456",
+      bike_manufacturer: "Trek",
+      bike_model: "Fuel EX",
+      service_note: "Full service",
+      status: "potwierdzone",
+      estimated_duration_minutes: 60,
+      technician_note: null,
+      source: "manual",
+    });
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toEqual(createdRow);
+  });
+
+  it("maps PATCH appointments with only the update allowlist", async () => {
+    const updatedRow = {
+      ...adminAppointmentRow,
+      status: "potwierdzone",
+      estimated_duration_minutes: 90,
+      technician_note: "Ready tomorrow",
+    };
+    const updateAppointment = vi.fn().mockResolvedValue(updatedRow);
+    const response = await handleCalendarAdmin(
+      calendarJsonRequest(
+        `appointments&id=${calendarRowId}`,
+        "PATCH",
+        {
+          status: "potwierdzone",
+          estimated_duration_minutes: 90,
+          technician_note: " Ready tomorrow ",
+        },
+      ),
+      calendarDependencies({ updateAppointment }),
+    );
+
+    expect(updateAppointment).toHaveBeenCalledWith(calendarRowId, {
+      status: "potwierdzone",
+      estimated_duration_minutes: 90,
+      technician_note: "Ready tomorrow",
+    });
+    await expect(response.json()).resolves.toEqual(updatedRow);
+  });
+
+  it("maps GET blocked-times by date", async () => {
+    const listBlockedTimes = vi.fn().mockResolvedValue([
+      { ...blockedTimeRow, private_value: "must not leak" },
+    ]);
+    const response = await handleCalendarAdmin(
+      calendarRequest("blocked-times&date=2026-06-11"),
+      calendarDependencies({ listBlockedTimes }),
+    );
+
+    expect(listBlockedTimes).toHaveBeenCalledWith("2026-06-11");
+    await expect(response.json()).resolves.toEqual([blockedTimeRow]);
+  });
+
+  it("maps POST blocked-times", async () => {
+    const createBlockedTime = vi.fn().mockResolvedValue(blockedTimeRow);
+    const response = await handleCalendarAdmin(
+      calendarJsonRequest("blocked-times", "POST", {
+        block_date: "2026-06-11",
+        start_time: "12:00",
+        end_time: "13:00",
+        reason: " Lunch ",
+      }),
+      calendarDependencies({ createBlockedTime }),
+    );
+
+    expect(createBlockedTime).toHaveBeenCalledWith({
+      block_date: "2026-06-11",
+      start_time: "12:00",
+      end_time: "13:00",
+      reason: "Lunch",
+    });
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toEqual(blockedTimeRow);
+  });
+
+  it("maps DELETE blocked-times by UUID", async () => {
+    const deleteBlockedTime = vi.fn().mockResolvedValue(true);
+    const response = await handleCalendarAdmin(
+      calendarRequest(`blocked-times&id=${calendarRowId}`, {
+        method: "DELETE",
+      }),
+      calendarDependencies({ deleteBlockedTime }),
+    );
+
+    expect(deleteBlockedTime).toHaveBeenCalledWith(calendarRowId);
+    await expect(response.json()).resolves.toEqual({
+      id: calendarRowId,
+      deleted: true,
+    });
+  });
+
+  it.each([
+    ["verify", "POST"],
+    ["working-hours", "DELETE"],
+    ["appointments", "DELETE"],
+    ["pending", "PATCH"],
+    ["blocked-times", "PATCH"],
+  ])("returns 405 for %s with %s", async (action, method) => {
+    const deps = calendarDependencies();
+    const response = await handleCalendarAdmin(
+      calendarRequest(action, { method }),
+      deps,
+    );
+
+    expect(response.status).toBe(405);
+    await expect(response.json()).resolves.toEqual({
+      error: "Method not allowed",
+      code: "METHOD_NOT_ALLOWED",
+    });
+    expectNoCalendarDatabaseCalls(deps);
+  });
+
+  it("returns 404 for an unknown action", async () => {
+    const deps = calendarDependencies();
+    const response = await handleCalendarAdmin(
+      calendarRequest("service_appointments"),
+      deps,
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      error: "Not found",
+      code: "NOT_FOUND",
+    });
+    expectNoCalendarDatabaseCalls(deps);
+  });
+});
+
+describe("calendar admin validation and errors", () => {
+  it.each([
+    ["working-hours", "PATCH", "updateWorkingHours"],
+    ["appointments", "PATCH", "updateAppointment"],
+    ["blocked-times", "DELETE", "deleteBlockedTime"],
+  ] as const)(
+    "rejects an invalid UUID for %s %s",
+    async (action, method, dependencyName) => {
+      const deps = calendarDependencies();
+      const request = method === "DELETE"
+        ? calendarRequest(`${action}&id=not-a-uuid`, { method })
+        : calendarJsonRequest(
+          `${action}&id=not-a-uuid`,
+          method,
+          action === "working-hours"
+            ? {
+              open_time: "10:00",
+              close_time: "19:00",
+              is_open: true,
+            }
+            : { status: "potwierdzone" },
+        );
+      const response = await handleCalendarAdmin(request, deps);
+
+      expect(response.status).toBe(400);
+      await expect(response.json()).resolves.toMatchObject({
+        code: "INVALID_UUID",
+      });
+      expect(deps[dependencyName]).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["appointments", "listAppointments"],
+    ["blocked-times", "listBlockedTimes"],
+  ] as const)(
+    "rejects an impossible date for GET %s",
+    async (action, dependencyName) => {
+      const deps = calendarDependencies();
+      const response = await handleCalendarAdmin(
+        calendarRequest(`${action}&date=2026-02-30`),
+        deps,
+      );
+
+      expect(response.status).toBe(400);
+      await expect(response.json()).resolves.toMatchObject({
+        code: "INVALID_DATE",
+      });
+      expect(deps[dependencyName]).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    [
+      {
+        open_time: "9:00",
+        close_time: "19:00",
+        is_open: true,
+      },
+      "INVALID_TIME",
+    ],
+    [
+      {
+        open_time: "19:00",
+        close_time: "10:00",
+        is_open: true,
+      },
+      "INVALID_TIME_RANGE",
+    ],
+    [
+      {
+        open_time: "10:00",
+        close_time: "19:00",
+        is_open: true,
+        day_of_week: 2,
+      },
+      "INVALID_FIELDS",
+    ],
+  ])("rejects invalid working-hours updates", async (body, code) => {
+    const deps = calendarDependencies();
+    const response = await handleCalendarAdmin(
+      calendarJsonRequest(
+        `working-hours&id=${calendarRowId}`,
+        "PATCH",
+        body,
+      ),
+      deps,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ code });
+    expect(deps.updateWorkingHours).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [{ status: "unknown" }, "INVALID_STATUS"],
+    [{ estimated_duration_minutes: 0 }, "INVALID_DURATION"],
+    [{ estimated_duration_minutes: 1.5 }, "INVALID_DURATION"],
+    [{ estimated_duration_minutes: 1441 }, "INVALID_DURATION"],
+    [{ appointment_date: "2026-06-12" }, "INVALID_FIELDS"],
+    [{}, "INVALID_FIELDS"],
+  ])("rejects invalid appointment patches", async (body, code) => {
+    const deps = calendarDependencies();
+    const response = await handleCalendarAdmin(
+      calendarJsonRequest(
+        `appointments&id=${calendarRowId}`,
+        "PATCH",
+        body,
+      ),
+      deps,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ code });
+    expect(deps.updateAppointment).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      {
+        appointment_date: "2026-02-30",
+        arrival_time: "10:30",
+        customer_name: "Jan",
+        customer_phone: "+48600123456",
+        bike_manufacturer: "Trek",
+        bike_model: "Fuel EX",
+        service_note: null,
+        estimated_duration_minutes: 60,
+      },
+      "INVALID_DATE",
+    ],
+    [
+      {
+        appointment_date: "2026-06-11",
+        arrival_time: "10:30:00",
+        customer_name: "Jan",
+        customer_phone: "+48600123456",
+        bike_manufacturer: "Trek",
+        bike_model: "Fuel EX",
+        service_note: null,
+        estimated_duration_minutes: 60,
+      },
+      "INVALID_TIME",
+    ],
+    [
+      {
+        appointment_date: "2026-06-11",
+        arrival_time: "10:30",
+        customer_name: "Jan",
+        customer_phone: "invalid",
+        bike_manufacturer: "Trek",
+        bike_model: "Fuel EX",
+        service_note: null,
+        estimated_duration_minutes: 60,
+      },
+      "INVALID_PHONE",
+    ],
+    [
+      {
+        appointment_date: "2026-06-11",
+        arrival_time: "10:30",
+        customer_name: "Jan",
+        customer_phone: "+48600123456",
+        bike_manufacturer: "Trek",
+        bike_model: "Fuel EX",
+        service_note: null,
+        estimated_duration_minutes: 0,
+      },
+      "INVALID_DURATION",
+    ],
+    [
+      {
+        appointment_date: "2026-06-11",
+        arrival_time: "10:30",
+        customer_name: "Jan",
+        customer_phone: "+48600123456",
+        bike_manufacturer: "Trek",
+        bike_model: "Fuel EX",
+        service_note: null,
+        estimated_duration_minutes: 60,
+        source: "online",
+      },
+      "INVALID_FIELDS",
+    ],
+  ])("rejects invalid manual appointment payloads", async (body, code) => {
+    const deps = calendarDependencies();
+    const response = await handleCalendarAdmin(
+      calendarJsonRequest("appointments", "POST", body),
+      deps,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ code });
+    expect(deps.createAppointment).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      {
+        block_date: "2026-02-30",
+        start_time: "12:00",
+        end_time: "13:00",
+        reason: null,
+      },
+      "INVALID_DATE",
+    ],
+    [
+      {
+        block_date: "2026-06-11",
+        start_time: "12:00:00",
+        end_time: "13:00",
+        reason: null,
+      },
+      "INVALID_TIME",
+    ],
+    [
+      {
+        block_date: "2026-06-11",
+        start_time: "13:00",
+        end_time: "12:00",
+        reason: null,
+      },
+      "INVALID_TIME_RANGE",
+    ],
+    [
+      {
+        block_date: "2026-06-11",
+        start_time: "12:00",
+        end_time: "13:00",
+        reason: null,
+        arbitrary_column: true,
+      },
+      "INVALID_FIELDS",
+    ],
+  ])("rejects invalid blocked-time payloads", async (body, code) => {
+    const deps = calendarDependencies();
+    const response = await handleCalendarAdmin(
+      calendarJsonRequest("blocked-times", "POST", body),
+      deps,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ code });
+    expect(deps.createBlockedTime).not.toHaveBeenCalled();
+  });
+
+  it("requires JSON content type for body routes", async () => {
+    const deps = calendarDependencies();
+    const response = await handleCalendarAdmin(
+      calendarRequest("appointments", {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: "{}",
+      }),
+      deps,
+    );
+
+    expect(response.status).toBe(415);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "UNSUPPORTED_MEDIA_TYPE",
+    });
+    expect(deps.createAppointment).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed JSON", async () => {
+    const deps = calendarDependencies();
+    const response = await handleCalendarAdmin(
+      calendarRequest("appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{",
+      }),
+      deps,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "INVALID_JSON",
+    });
+    expect(deps.createAppointment).not.toHaveBeenCalled();
+  });
+
+  it("rejects JSON bodies over 8192 UTF-8 bytes", async () => {
+    const deps = calendarDependencies();
+    const response = await handleCalendarAdmin(
+      calendarJsonRequest("blocked-times", "POST", {
+        block_date: "2026-06-11",
+        start_time: "12:00",
+        end_time: "13:00",
+        reason: "\u0105".repeat(4100),
+      }),
+      deps,
+    );
+
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "PAYLOAD_TOO_LARGE",
+    });
+    expect(deps.createBlockedTime).not.toHaveBeenCalled();
+  });
+
+  it("returns generic database errors without leaking details", async () => {
+    const deps = calendarDependencies({
+      listAppointments: vi.fn().mockRejectedValue(
+        new Error(`database failed with ${calendarAdminPassword}`),
+      ),
+    });
+    const response = await handleCalendarAdmin(
+      calendarRequest("appointments&date=2026-06-11"),
+      deps,
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(payload).toEqual({
+      error: "Database operation failed",
+      code: "DB_ERROR",
+    });
+    expect(JSON.stringify(payload)).not.toContain(calendarAdminPassword);
+  });
+
+  it.each([
+    ["working-hours", "PATCH", "updateWorkingHours"],
+    ["appointments", "PATCH", "updateAppointment"],
+  ] as const)(
+    "returns a generic 404 when %s %s finds no row",
+    async (action, method, dependencyName) => {
+      const deps = calendarDependencies({
+        [dependencyName]: vi.fn().mockResolvedValue(null),
+      });
+      const body = action === "working-hours"
+        ? {
+          open_time: "10:00",
+          close_time: "19:00",
+          is_open: true,
+        }
+        : { status: "potwierdzone" };
+      const response = await handleCalendarAdmin(
+        calendarJsonRequest(
+          `${action}&id=${calendarRowId}`,
+          method,
+          body,
+        ),
+        deps,
+      );
+
+      expect(response.status).toBe(404);
+      await expect(response.json()).resolves.toEqual({
+        error: "Not found",
+        code: "NOT_FOUND",
+      });
+    },
+  );
+
+  it("returns a generic 404 when a blocked time is not deleted", async () => {
+    const response = await handleCalendarAdmin(
+      calendarRequest(`blocked-times&id=${calendarRowId}`, {
+        method: "DELETE",
+      }),
+      calendarDependencies({
+        deleteBlockedTime: vi.fn().mockResolvedValue(false),
+      }),
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      error: "Not found",
+      code: "NOT_FOUND",
+    });
+  });
+});
+
+describe("calendar admin production adapter", () => {
+  it("keeps service-role setup guarded, server-only, and non-persistent", () => {
+    const moduleUrl = new URL("../calendar-admin/index.ts", import.meta.url);
+    const source = readFileSync(moduleUrl, "utf8");
+    const guardIndex = source.indexOf('if (typeof Deno !== "undefined"');
+    const npmSpecifierIndex = source.indexOf("npm:@supabase/supabase-js@2");
+
+    expect(guardIndex).toBeGreaterThanOrEqual(0);
+    expect(npmSpecifierIndex).toBeGreaterThan(guardIndex);
+    expect(source).toContain('Deno.env.get("ADMIN_PASSWORD")');
+    expect(source).toContain('Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")');
+    expect(source).toContain("persistSession: false");
+    expect(source).not.toContain('.select("*")');
+    expect(source).not.toContain(".select('*')");
+  });
+});
+
 describe("Deno module specifiers", () => {
   it("uses explicit .ts extensions for every relative Edge import", () => {
     for (const moduleUrl of [
       new URL("./booking.test.ts", import.meta.url),
+      new URL("./admin-auth.ts", import.meta.url),
       new URL("./crypto.test.ts", import.meta.url),
       new URL("../services/index.ts", import.meta.url),
       new URL("../availability/index.ts", import.meta.url),
       new URL("../appointments/index.ts", import.meta.url),
+      new URL("../calendar-admin/index.ts", import.meta.url),
     ]) {
       const source = readFileSync(moduleUrl, "utf8");
       const relativeImports = Array.from(
