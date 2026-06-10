@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   ApiProblem,
@@ -11,6 +11,10 @@ import {
 } from "./booking";
 import { json, jsonError, methodNotAllowed, preflight } from "./http";
 import { handleServices } from "../services/index";
+import {
+  createAvailabilityDependencies,
+  handleAvailability,
+} from "../availability/index";
 
 const validBody = {
   date: "2026-06-10",
@@ -275,6 +279,111 @@ describe("services handler", () => {
     expect(post.status).toBe(405);
     await expect(post.json()).resolves.toMatchObject({
       code: "METHOD_NOT_ALLOWED",
+    });
+  });
+});
+
+describe("availability handler", () => {
+  it("rejects impossible calendar dates without querying the database", async () => {
+    const getAvailability = vi.fn();
+    const response = await handleAvailability(
+      new Request("https://example.test/availability?date=2026-02-30"),
+      { getAvailability },
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "INVALID_DATE",
+    });
+    expect(getAvailability).not.toHaveBeenCalled();
+  });
+
+  it("rejects non-GET methods", async () => {
+    const response = await handleAvailability(
+      new Request("https://example.test/availability?date=2026-06-11", {
+        method: "POST",
+      }),
+      { getAvailability: vi.fn() },
+    );
+
+    expect(response.status).toBe(405);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "METHOD_NOT_ALLOWED",
+    });
+  });
+
+  it("returns DB_ERROR when the availability dependency fails", async () => {
+    const response = await handleAvailability(
+      new Request("https://example.test/availability?date=2026-06-11"),
+      {
+        getAvailability: vi.fn().mockRejectedValue(new Error("database down")),
+      },
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "Failed to fetch availability",
+      code: "DB_ERROR",
+    });
+  });
+
+  it("represents a closed day with null hours and no slots", async () => {
+    const response = await handleAvailability(
+      new Request("https://example.test/availability?date=2026-06-14"),
+      {
+        getAvailability: vi.fn().mockResolvedValue({
+          requested_date: "2026-06-14",
+          open_time: null,
+          close_time: null,
+          slots: [],
+        }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      date: "2026-06-14",
+      timezone: "Europe/Warsaw",
+      open: null,
+      close: null,
+      slots: [],
+    });
+  });
+
+  it("documents Warsaw time and formats open-day hours", async () => {
+    const response = await handleAvailability(
+      new Request("https://example.test/availability?date=2026-06-11"),
+      {
+        getAvailability: vi.fn().mockResolvedValue({
+          requested_date: "2026-06-11",
+          open_time: "10:00:00",
+          close_time: "19:00:00",
+          slots: ["10:00", "10:30"],
+        }),
+      },
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      date: "2026-06-11",
+      timezone: "Europe/Warsaw",
+      open: "10:00",
+      close: "19:00",
+      slots: ["10:00", "10:30"],
+    });
+  });
+
+  it("calls get_public_availability and rejects Supabase errors", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: "rpc failed" },
+    });
+    const deps = createAvailabilityDependencies({ rpc });
+
+    await expect(deps.getAvailability("2026-06-11")).rejects.toBeInstanceOf(
+      Error,
+    );
+    expect(rpc).toHaveBeenCalledWith("get_public_availability", {
+      p_date: "2026-06-11",
     });
   });
 });
