@@ -101,6 +101,75 @@ set open_time = excluded.open_time,
     close_time = excluded.close_time,
     is_open = excluded.is_open;
 
+do $migration$
+begin
+  if not exists (
+    select 1
+    from pg_catalog.pg_constraint
+    where conrelid = 'public.service_working_hours'::pg_catalog.regclass
+      and conname = 'service_working_hours_open_times_required'
+  ) then
+    alter table public.service_working_hours
+      add constraint service_working_hours_open_times_required
+      check (
+        not is_open
+        or (open_time is not null and close_time is not null)
+      )
+      not valid;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_catalog.pg_constraint
+    where conrelid = 'public.service_working_hours'::pg_catalog.regclass
+      and conname = 'service_working_hours_time_order'
+  ) then
+    alter table public.service_working_hours
+      add constraint service_working_hours_time_order
+      check (
+        open_time is null
+        or close_time is null
+        or open_time < close_time
+      )
+      not valid;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_catalog.pg_constraint
+    where conrelid = 'public.service_working_hours'::pg_catalog.regclass
+      and conname = 'service_working_hours_half_hour_alignment'
+  ) then
+    alter table public.service_working_hours
+      add constraint service_working_hours_half_hour_alignment
+      check (
+        (
+          open_time is null
+          or (
+            extract(minute from open_time) in (0, 30)
+            and extract(second from open_time) = 0
+          )
+        )
+        and (
+          close_time is null
+          or (
+            extract(minute from close_time) in (0, 30)
+            and extract(second from close_time) = 0
+          )
+        )
+      )
+      not valid;
+  end if;
+end
+$migration$;
+
+alter table public.service_working_hours
+  validate constraint service_working_hours_open_times_required;
+alter table public.service_working_hours
+  validate constraint service_working_hours_time_order;
+alter table public.service_working_hours
+  validate constraint service_working_hours_half_hour_alignment;
+
 create or replace function public.get_public_availability(p_date date)
 returns table (
   requested_date date,
@@ -186,6 +255,7 @@ declare
   v_slot_end timestamp without time zone;
   v_created_id uuid;
   v_created_status text;
+  v_constraint_name text;
 begin
   select
     working_hours.open_time,
@@ -285,9 +355,15 @@ begin
     into v_created_id, v_created_status;
   exception
     when unique_violation then
-      raise exception using
-        errcode = 'DRK03',
-        message = 'slot taken';
+      get stacked diagnostics v_constraint_name = constraint_name;
+
+      if v_constraint_name = 'service_appointments_active_slot_unique' then
+        raise exception using
+          errcode = 'DRK03',
+          message = 'slot taken';
+      end if;
+
+      raise;
   end;
 
   return query
@@ -357,30 +433,6 @@ drop policy if exists "anon_update_blocked_times"
   on public.service_blocked_times;
 drop policy if exists "anon_delete_blocked_times"
   on public.service_blocked_times;
-
-do $migration$
-declare
-  existing_policy record;
-begin
-  for existing_policy in
-    select schemaname, tablename, policyname
-    from pg_catalog.pg_policies
-    where schemaname = 'public'
-      and tablename in (
-        'service_appointments',
-        'service_working_hours',
-        'service_blocked_times'
-      )
-  loop
-    execute pg_catalog.format(
-      'drop policy if exists %I on %I.%I',
-      existing_policy.policyname,
-      existing_policy.schemaname,
-      existing_policy.tablename
-    );
-  end loop;
-end
-$migration$;
 
 revoke all privileges on table public.service_appointments
   from public, anon, authenticated;
