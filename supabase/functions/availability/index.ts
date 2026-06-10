@@ -1,10 +1,10 @@
-import { ApiProblem, validateCalendarDate } from "../_shared/booking";
+import { ApiProblem, validateCalendarDate } from "../_shared/booking.ts";
 import {
   json,
   jsonError,
   methodNotAllowed,
   preflight,
-} from "../_shared/http";
+} from "../_shared/http.ts";
 
 export interface AvailabilityRow {
   requested_date: string;

@@ -1,5 +1,7 @@
 // @vitest-environment node
 
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -8,19 +10,19 @@ import {
   normalizePhone,
   validateCalendarDate,
   validateCreateAppointment,
-} from "./booking";
-import { json, jsonError, methodNotAllowed, preflight } from "./http";
-import { handleServices } from "../services/index";
+} from "./booking.ts";
+import { json, jsonError, methodNotAllowed, preflight } from "./http.ts";
+import { handleServices } from "../services/index.ts";
 import {
   createAvailabilityDependencies,
   handleAvailability,
-} from "../availability/index";
+} from "../availability/index.ts";
 import {
   type AppointmentsDependencies,
   createAppointmentStore,
   getWarsawDate,
   handleAppointments,
-} from "../appointments/index";
+} from "../appointments/index.ts";
 
 const validBody = {
   date: "2026-06-10",
@@ -215,7 +217,7 @@ describe("HTTP response helpers", () => {
     ["Access-Control-Allow-Origin", "*"],
     [
       "Access-Control-Allow-Headers",
-      "authorization, apikey, x-admin-password, content-type",
+      "authorization, apikey, x-client-info, x-admin-password, x-lookup-token, content-type",
     ],
     ["Content-Type", "application/json; charset=utf-8"],
     ["Cache-Control", "no-store"],
@@ -239,7 +241,7 @@ describe("HTTP response helpers", () => {
     expect(response.status).toBe(204);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
     expect(response.headers.get("Access-Control-Allow-Headers")).toBe(
-      "authorization, apikey, x-admin-password, content-type",
+      "authorization, apikey, x-client-info, x-admin-password, x-lookup-token, content-type",
     );
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(await response.text()).toBe("");
@@ -421,6 +423,21 @@ function appointmentPost(
   });
 }
 
+function streamingAppointmentPost(
+  body: ReadableStream<Uint8Array>,
+  headers: HeadersInit = {},
+): Request {
+  return new Request("https://example.test/appointments", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...headers,
+    },
+    body,
+    duplex: "half",
+  } as RequestInit & { duplex: "half" });
+}
+
 describe("appointments handler POST", () => {
   it("rejects request bodies over 8192 UTF-8 bytes", async () => {
     const body = JSON.stringify({
@@ -450,6 +467,79 @@ describe("appointments handler POST", () => {
     expect(response.status).toBe(415);
     await expect(response.json()).resolves.toMatchObject({
       code: "UNSUPPORTED_MEDIA_TYPE",
+    });
+  });
+
+  it("rejects a valid oversized Content-Length before reading a body", async () => {
+    const response = await handleAppointments(
+      new Request("https://example.test/appointments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": "8193",
+        },
+      }),
+      appointmentDependencies(),
+    );
+
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "PAYLOAD_TOO_LARGE",
+    });
+  });
+
+  it("does not trust an invalid Content-Length value", async () => {
+    const response = await handleAppointments(
+      new Request("https://example.test/appointments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": "8193oops",
+        },
+      }),
+      appointmentDependencies(),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "INVALID_JSON",
+    });
+  });
+
+  it("cancels a streaming body as soon as it exceeds 8192 bytes", async () => {
+    const cancel = vi.fn();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(8192));
+        controller.enqueue(new Uint8Array([1]));
+      },
+      cancel,
+    });
+
+    const response = await handleAppointments(
+      streamingAppointmentPost(body),
+      appointmentDependencies(),
+    );
+
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "PAYLOAD_TOO_LARGE",
+    });
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats a null request body as invalid JSON", async () => {
+    const response = await handleAppointments(
+      new Request("https://example.test/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }),
+      appointmentDependencies(),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "INVALID_JSON",
     });
   });
 
@@ -525,26 +615,39 @@ describe("appointments handler POST", () => {
 });
 
 describe("appointments handler GET", () => {
-  it.each([
-    ["https://example.test/appointments?token=secret", "MISSING_PHONE"],
-    [
-      "https://example.test/appointments?phone=%2B48600123456",
-      "MISSING_TOKEN",
-    ],
-  ])("returns a clear error for a missing credential", async (url, code) => {
+  it("requires the phone query parameter", async () => {
     const response = await handleAppointments(
-      new Request(url),
+      new Request("https://example.test/appointments", {
+        headers: { "X-Lookup-Token": "secret" },
+      }),
       appointmentDependencies(),
     );
 
     expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toMatchObject({ code });
+    await expect(response.json()).resolves.toMatchObject({
+      code: "MISSING_PHONE",
+    });
+  });
+
+  it("requires X-Lookup-Token and ignores a token in the URL", async () => {
+    const response = await handleAppointments(
+      new Request(
+        "https://example.test/appointments?phone=%2B48600123456&token=url-secret",
+      ),
+      appointmentDependencies(),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "MISSING_TOKEN",
+    });
   });
 
   it("returns a generic not-found response for invalid credentials", async () => {
     const response = await handleAppointments(
       new Request(
-        "https://example.test/appointments?phone=invalid&token=secret",
+        "https://example.test/appointments?phone=invalid",
+        { headers: { "X-Lookup-Token": "wrong-token" } },
       ),
       appointmentDependencies(),
     );
@@ -558,11 +661,13 @@ describe("appointments handler GET", () => {
 
   it("returns a generic not-found response when no row matches", async () => {
     const getAppointment = vi.fn().mockResolvedValue(null);
+    const hashLookupToken = vi.fn().mockResolvedValue("a".repeat(64));
     const response = await handleAppointments(
       new Request(
-        "https://example.test/appointments?phone=%2B48+600-123-456&token=secret",
+        "https://example.test/appointments?phone=%2B48+600-123-456",
+        { headers: { "x-LoOkUp-ToKeN": "header-secret" } },
       ),
-      appointmentDependencies({ getAppointment }),
+      appointmentDependencies({ getAppointment, hashLookupToken }),
     );
 
     expect(response.status).toBe(404);
@@ -574,6 +679,7 @@ describe("appointments handler GET", () => {
       "48600123456",
       "a".repeat(64),
     );
+    expect(hashLookupToken).toHaveBeenCalledWith("header-secret");
   });
 
   it("returns only explicit customer-facing appointment fields", async () => {
@@ -593,7 +699,8 @@ describe("appointments handler GET", () => {
     });
     const response = await handleAppointments(
       new Request(
-        "https://example.test/appointments?phone=%2B48600123456&token=secret",
+        "https://example.test/appointments?phone=%2B48600123456",
+        { headers: { "X-Lookup-Token": "secret" } },
       ),
       appointmentDependencies({ getAppointment }),
     );
@@ -637,6 +744,28 @@ describe("appointments transport and production adapters", () => {
     expect(getWarsawDate(new Date("2026-10-25T22:30:00.000Z"))).toBe(
       "2026-10-25",
     );
+  });
+
+  it("imports handlers under Vitest without executing Deno adapters", () => {
+    expect(handleServices).toBeTypeOf("function");
+    expect(handleAvailability).toBeTypeOf("function");
+    expect(handleAppointments).toBeTypeOf("function");
+  });
+
+  it("keeps service-role adapters guarded and on the official npm specifier", () => {
+    for (const moduleUrl of [
+      new URL("../availability/index.ts", import.meta.url),
+      new URL("../appointments/index.ts", import.meta.url),
+    ]) {
+      const source = readFileSync(moduleUrl, "utf8");
+      const guardIndex = source.indexOf('if (typeof Deno !== "undefined"');
+      const npmSpecifierIndex = source.indexOf(
+        "npm:@supabase/supabase-js@2",
+      );
+
+      expect(guardIndex).toBeGreaterThanOrEqual(0);
+      expect(npmSpecifierIndex).toBeGreaterThan(guardIndex);
+    }
   });
 
   it("calls the appointment RPCs and maps DRK03 as an ApiProblem", async () => {
@@ -689,5 +818,31 @@ describe("appointments transport and production adapters", () => {
       p_phone_normalized: "48600123456",
       p_lookup_token_hash: "a".repeat(64),
     });
+  });
+});
+
+describe("Deno module specifiers", () => {
+  it("uses explicit .ts extensions for every relative Edge import", () => {
+    for (const moduleUrl of [
+      new URL("./booking.test.ts", import.meta.url),
+      new URL("./crypto.test.ts", import.meta.url),
+      new URL("../services/index.ts", import.meta.url),
+      new URL("../availability/index.ts", import.meta.url),
+      new URL("../appointments/index.ts", import.meta.url),
+    ]) {
+      const source = readFileSync(moduleUrl, "utf8");
+      const relativeImports = Array.from(
+        source.matchAll(
+          /(?:from\s+|import\s*\()\s*["'](\.{1,2}\/[^"']+)["']/g,
+        ),
+        (match) => match[1],
+      );
+
+      for (const specifier of relativeImports) {
+        expect(specifier, `${moduleUrl.pathname}: ${specifier}`).toMatch(
+          /\.ts$/,
+        );
+      }
+    }
   });
 });

@@ -1,4 +1,4 @@
-import { json, methodNotAllowed, preflight } from "../_shared/http";
+import { json, methodNotAllowed, preflight } from "../_shared/http.ts";
 
 const SERVICES = {
   categories: [

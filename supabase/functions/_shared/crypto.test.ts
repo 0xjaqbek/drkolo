@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { generateLookupToken, hashLookupToken } from "./crypto";
+import { generateLookupToken, hashLookupToken } from "./crypto.ts";
 
 describe("lookup token cryptography", () => {
   it("generates a 32-byte base64url token without padding", () => {

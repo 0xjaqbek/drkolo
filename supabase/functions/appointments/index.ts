@@ -4,17 +4,17 @@ import {
   normalizePhone,
   type ValidatedAppointment,
   validateCreateAppointment,
-} from "../_shared/booking";
+} from "../_shared/booking.ts";
 import {
   generateLookupToken,
   hashLookupToken,
-} from "../_shared/crypto";
+} from "../_shared/crypto.ts";
 import {
   json,
   jsonError,
   methodNotAllowed,
   preflight,
-} from "../_shared/http";
+} from "../_shared/http.ts";
 
 const MAX_BODY_BYTES = 8192;
 
@@ -134,6 +134,73 @@ function notFound(): Response {
   return jsonError("Appointment not found", "NOT_FOUND", 404);
 }
 
+function requestProblem(
+  message: string,
+  code: string,
+  status: number,
+): ApiProblem {
+  return new ApiProblem(code, status, message);
+}
+
+async function readBoundedBody(req: Request): Promise<string> {
+  const contentLength = req.headers.get("Content-Length")?.trim();
+  if (
+    contentLength &&
+    /^\d+$/.test(contentLength) &&
+    BigInt(contentLength) > BigInt(MAX_BODY_BYTES)
+  ) {
+    throw requestProblem(
+      "Request body too large",
+      "PAYLOAD_TOO_LARGE",
+      413,
+    );
+  }
+
+  if (!req.body) {
+    throw requestProblem("Invalid JSON body", "INVALID_JSON", 400);
+  }
+
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let byteLength = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      byteLength += value.byteLength;
+      if (byteLength > MAX_BODY_BYTES) {
+        try {
+          await reader.cancel();
+        } catch {
+          // Cancellation is best-effort; the request is already rejected.
+        }
+        throw requestProblem(
+          "Request body too large",
+          "PAYLOAD_TOO_LARGE",
+          413,
+        );
+      }
+
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return new TextDecoder().decode(bytes);
+}
+
 async function handlePost(
   req: Request,
   deps: AppointmentsDependencies,
@@ -146,9 +213,15 @@ async function handlePost(
     );
   }
 
-  const rawBody = await req.text();
-  if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
-    return jsonError("Request body too large", "PAYLOAD_TOO_LARGE", 413);
+  let rawBody: string;
+  try {
+    rawBody = await readBoundedBody(req);
+  } catch (error) {
+    if (error instanceof ApiProblem) {
+      return apiProblemResponse(error);
+    }
+
+    return jsonError("Invalid JSON body", "INVALID_JSON", 400);
   }
 
   let body: unknown;
@@ -191,14 +264,18 @@ async function handleGet(
 ): Promise<Response> {
   const url = new URL(req.url);
   const phone = url.searchParams.get("phone");
-  const token = url.searchParams.get("token");
+  const token = req.headers.get("X-Lookup-Token");
 
   if (!phone?.trim()) {
     return jsonError("Missing phone parameter", "MISSING_PHONE", 400);
   }
 
   if (!token?.trim()) {
-    return jsonError("Missing token parameter", "MISSING_TOKEN", 400);
+    return jsonError(
+      "Missing X-Lookup-Token header",
+      "MISSING_TOKEN",
+      400,
+    );
   }
 
   let phoneNormalized: string;
