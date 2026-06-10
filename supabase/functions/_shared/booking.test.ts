@@ -15,6 +15,12 @@ import {
   createAvailabilityDependencies,
   handleAvailability,
 } from "../availability/index";
+import {
+  type AppointmentsDependencies,
+  createAppointmentStore,
+  getWarsawDate,
+  handleAppointments,
+} from "../appointments/index";
 
 const validBody = {
   date: "2026-06-10",
@@ -384,6 +390,304 @@ describe("availability handler", () => {
     );
     expect(rpc).toHaveBeenCalledWith("get_public_availability", {
       p_date: "2026-06-11",
+    });
+  });
+});
+
+function appointmentDependencies(
+  overrides: Partial<AppointmentsDependencies> = {},
+): AppointmentsDependencies {
+  return {
+    todayWarsaw: vi.fn().mockReturnValue("2026-06-10"),
+    generateLookupToken: vi.fn().mockReturnValue("lookup-token"),
+    hashLookupToken: vi.fn().mockResolvedValue("a".repeat(64)),
+    createAppointment: vi.fn().mockResolvedValue({
+      id: "appointment-id",
+      status: "zapytanie",
+    }),
+    getAppointment: vi.fn().mockResolvedValue(null),
+    ...overrides,
+  };
+}
+
+function appointmentPost(
+  body: string,
+  contentType = "application/json",
+): Request {
+  return new Request("https://example.test/appointments", {
+    method: "POST",
+    headers: { "Content-Type": contentType },
+    body,
+  });
+}
+
+describe("appointments handler POST", () => {
+  it("rejects request bodies over 8192 UTF-8 bytes", async () => {
+    const body = JSON.stringify({
+      ...validBody,
+      service_note: "\u0105".repeat(4100),
+    });
+    expect(body.length).toBeLessThan(8192);
+    expect(new TextEncoder().encode(body).byteLength).toBeGreaterThan(8192);
+
+    const response = await handleAppointments(
+      appointmentPost(body),
+      appointmentDependencies(),
+    );
+
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "PAYLOAD_TOO_LARGE",
+    });
+  });
+
+  it("requires an application/json content type", async () => {
+    const response = await handleAppointments(
+      appointmentPost(JSON.stringify(validBody), "text/plain"),
+      appointmentDependencies(),
+    );
+
+    expect(response.status).toBe(415);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "UNSUPPORTED_MEDIA_TYPE",
+    });
+  });
+
+  it("rejects malformed JSON", async () => {
+    const response = await handleAppointments(
+      appointmentPost("{"),
+      appointmentDependencies(),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "INVALID_JSON",
+    });
+  });
+
+  it("returns shared booking validation problems", async () => {
+    const response = await handleAppointments(
+      appointmentPost(JSON.stringify({ ...validBody, time: "10:15" })),
+      appointmentDependencies(),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "INVALID_TIME",
+    });
+  });
+
+  it("accepts a JSON charset and returns the raw lookup token once", async () => {
+    const createAppointment = vi.fn().mockResolvedValue({
+      id: "appointment-id",
+      status: "zapytanie",
+    });
+    const deps = appointmentDependencies({ createAppointment });
+    const response = await handleAppointments(
+      appointmentPost(
+        JSON.stringify(validBody),
+        "application/json; charset=utf-8",
+      ),
+      deps,
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(payload).toEqual({
+      id: "appointment-id",
+      status: "zapytanie",
+      lookup_token: "lookup-token",
+      message: "Appointment inquiry created. The shop will call to confirm.",
+    });
+    expect(JSON.stringify(payload)).not.toContain("lookup_token_hash");
+    expect(createAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customer_phone_normalized: "48600123456",
+        lookup_token_hash: "a".repeat(64),
+      }),
+    );
+  });
+
+  it("maps appointment database conflicts to ApiProblem responses", async () => {
+    const createAppointment = vi.fn().mockRejectedValue(
+      new ApiProblem("SLOT_TAKEN", 409, "SLOT_TAKEN"),
+    );
+    const response = await handleAppointments(
+      appointmentPost(JSON.stringify(validBody)),
+      appointmentDependencies({ createAppointment }),
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "SLOT_TAKEN",
+    });
+  });
+});
+
+describe("appointments handler GET", () => {
+  it.each([
+    ["https://example.test/appointments?token=secret", "MISSING_PHONE"],
+    [
+      "https://example.test/appointments?phone=%2B48600123456",
+      "MISSING_TOKEN",
+    ],
+  ])("returns a clear error for a missing credential", async (url, code) => {
+    const response = await handleAppointments(
+      new Request(url),
+      appointmentDependencies(),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ code });
+  });
+
+  it("returns a generic not-found response for invalid credentials", async () => {
+    const response = await handleAppointments(
+      new Request(
+        "https://example.test/appointments?phone=invalid&token=secret",
+      ),
+      appointmentDependencies(),
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      error: "Appointment not found",
+      code: "NOT_FOUND",
+    });
+  });
+
+  it("returns a generic not-found response when no row matches", async () => {
+    const getAppointment = vi.fn().mockResolvedValue(null);
+    const response = await handleAppointments(
+      new Request(
+        "https://example.test/appointments?phone=%2B48+600-123-456&token=secret",
+      ),
+      appointmentDependencies({ getAppointment }),
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      error: "Appointment not found",
+      code: "NOT_FOUND",
+    });
+    expect(getAppointment).toHaveBeenCalledWith(
+      "48600123456",
+      "a".repeat(64),
+    );
+  });
+
+  it("returns only explicit customer-facing appointment fields", async () => {
+    const getAppointment = vi.fn().mockResolvedValue({
+      id: "appointment-id",
+      appointment_date: "2026-06-11",
+      arrival_time: "10:30:00",
+      status: "zapytanie",
+      bike_manufacturer: "Trek",
+      bike_model: "Fuel EX",
+      service_note: "Full service",
+      created_at: "2026-06-10T12:00:00Z",
+      customer_name: "must not leak",
+      customer_phone: "must not leak",
+      lookup_token_hash: "must not leak",
+      technician_note: "must not leak",
+    });
+    const response = await handleAppointments(
+      new Request(
+        "https://example.test/appointments?phone=%2B48600123456&token=secret",
+      ),
+      appointmentDependencies({ getAppointment }),
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      id: "appointment-id",
+      date: "2026-06-11",
+      time: "10:30",
+      status: "zapytanie",
+      bike_manufacturer: "Trek",
+      bike_model: "Fuel EX",
+      service_note: "Full service",
+      created_at: "2026-06-10T12:00:00Z",
+    });
+  });
+});
+
+describe("appointments transport and production adapters", () => {
+  it("supports OPTIONS and rejects unsupported methods", async () => {
+    const deps = appointmentDependencies();
+    const options = await handleAppointments(
+      new Request("https://example.test/appointments", { method: "OPTIONS" }),
+      deps,
+    );
+    const patch = await handleAppointments(
+      new Request("https://example.test/appointments", { method: "PATCH" }),
+      deps,
+    );
+
+    expect(options.status).toBe(204);
+    expect(patch.status).toBe(405);
+    await expect(patch.json()).resolves.toMatchObject({
+      code: "METHOD_NOT_ALLOWED",
+    });
+  });
+
+  it("computes the current calendar date in Europe/Warsaw", () => {
+    expect(getWarsawDate(new Date("2026-03-28T23:30:00.000Z"))).toBe(
+      "2026-03-29",
+    );
+    expect(getWarsawDate(new Date("2026-10-25T22:30:00.000Z"))).toBe(
+      "2026-10-25",
+    );
+  });
+
+  it("calls the appointment RPCs and maps DRK03 as an ApiProblem", async () => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: null,
+        error: { code: "DRK03", message: "slot taken" },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: "appointment-id",
+            appointment_date: "2026-06-11",
+            arrival_time: "10:30:00",
+            status: "zapytanie",
+            bike_manufacturer: "Trek",
+            bike_model: "Fuel EX",
+            service_note: "Full service",
+            created_at: "2026-06-10T12:00:00Z",
+          },
+        ],
+        error: null,
+      });
+    const store = createAppointmentStore({ rpc });
+
+    try {
+      await store.createAppointment({
+        ...validateCreateAppointment(validBody, "2026-06-10"),
+        lookup_token_hash: "a".repeat(64),
+      });
+      throw new Error("Expected createAppointment to reject");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiProblem);
+      expect(error).toMatchObject({ code: "SLOT_TAKEN", status: 409 });
+    }
+
+    await expect(
+      store.getAppointment("48600123456", "a".repeat(64)),
+    ).resolves.toMatchObject({ id: "appointment-id" });
+    expect(rpc).toHaveBeenNthCalledWith(
+      1,
+      "create_public_appointment",
+      expect.objectContaining({
+        p_customer_phone_normalized: "48600123456",
+        p_lookup_token_hash: "a".repeat(64),
+      }),
+    );
+    expect(rpc).toHaveBeenNthCalledWith(2, "get_public_appointment", {
+      p_phone_normalized: "48600123456",
+      p_lookup_token_hash: "a".repeat(64),
     });
   });
 });
