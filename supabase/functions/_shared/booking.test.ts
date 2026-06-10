@@ -9,6 +9,8 @@ import {
   validateCalendarDate,
   validateCreateAppointment,
 } from "./booking";
+import { json, jsonError, methodNotAllowed, preflight } from "./http";
+import { handleServices } from "../services/index";
 
 const validBody = {
   date: "2026-06-10",
@@ -195,5 +197,84 @@ describe("mapBookingDatabaseError", () => {
 
     expect(problem).toBeInstanceOf(ApiProblem);
     expect(problem).toMatchObject({ code: apiCode, status });
+  });
+});
+
+describe("HTTP response helpers", () => {
+  it.each([
+    ["Access-Control-Allow-Origin", "*"],
+    [
+      "Access-Control-Allow-Headers",
+      "authorization, apikey, x-admin-password, content-type",
+    ],
+    ["Content-Type", "application/json; charset=utf-8"],
+    ["Cache-Control", "no-store"],
+  ])("sets %s on JSON responses", (header, value) => {
+    expect(json({ ok: true }).headers.get(header)).toBe(value);
+  });
+
+  it("serializes standard API errors", async () => {
+    const response = jsonError("Invalid request", "INVALID_REQUEST", 400);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Invalid request",
+      code: "INVALID_REQUEST",
+    });
+  });
+
+  it("returns a bodyless CORS preflight response", async () => {
+    const response = preflight();
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("Access-Control-Allow-Headers")).toBe(
+      "authorization, apikey, x-admin-password, content-type",
+    );
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(await response.text()).toBe("");
+  });
+
+  it("returns a standard method-not-allowed problem", async () => {
+    const response = methodNotAllowed();
+
+    expect(response.status).toBe(405);
+    await expect(response.json()).resolves.toEqual({
+      error: "Method not allowed",
+      code: "METHOD_NOT_ALLOWED",
+    });
+  });
+});
+
+describe("services handler", () => {
+  it("preserves the public service catalog for GET requests", async () => {
+    const response = await handleServices(
+      new Request("https://example.test/services"),
+    );
+    const catalog = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(catalog.categories).toHaveLength(5);
+    expect(catalog.categories[0].services[0]).toMatchObject({
+      price_pln: 649,
+    });
+    expect(catalog.categories[4].services[2]).toMatchObject({
+      price_pln: 30,
+    });
+  });
+
+  it("supports OPTIONS and rejects all other methods", async () => {
+    const options = await handleServices(
+      new Request("https://example.test/services", { method: "OPTIONS" }),
+    );
+    const post = await handleServices(
+      new Request("https://example.test/services", { method: "POST" }),
+    );
+
+    expect(options.status).toBe(204);
+    expect(post.status).toBe(405);
+    await expect(post.json()).resolves.toMatchObject({
+      code: "METHOD_NOT_ALLOWED",
+    });
   });
 });

@@ -1,7 +1,4 @@
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { json, methodNotAllowed, preflight } from "../_shared/http";
 
 const SERVICES = {
   categories: [
@@ -49,12 +46,18 @@ const SERVICES = {
   ],
 };
 
-Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+export async function handleServices(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") {
+    return preflight();
   }
 
-  return new Response(JSON.stringify(SERVICES), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-});
+  if (req.method !== "GET") {
+    return methodNotAllowed();
+  }
+
+  return json(SERVICES);
+}
+
+if (typeof Deno !== "undefined" && typeof Deno.serve === "function") {
+  Deno.serve(handleServices);
+}
