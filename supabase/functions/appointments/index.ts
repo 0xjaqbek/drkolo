@@ -262,12 +262,15 @@ async function handleGet(
   req: Request,
   deps: AppointmentsDependencies,
 ): Promise<Response> {
-  const url = new URL(req.url);
-  const phone = url.searchParams.get("phone");
+  const phone = req.headers.get("X-Customer-Phone");
   const token = req.headers.get("X-Lookup-Token");
 
   if (!phone?.trim()) {
-    return jsonError("Missing phone parameter", "MISSING_PHONE", 400);
+    return jsonError(
+      "Missing X-Customer-Phone header",
+      "MISSING_PHONE",
+      400,
+    );
   }
 
   if (!token?.trim()) {

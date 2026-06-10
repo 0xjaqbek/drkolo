@@ -217,7 +217,7 @@ describe("HTTP response helpers", () => {
     ["Access-Control-Allow-Origin", "*"],
     [
       "Access-Control-Allow-Headers",
-      "authorization, apikey, x-client-info, x-admin-password, x-lookup-token, content-type",
+      "authorization, apikey, x-client-info, x-admin-password, x-customer-phone, x-lookup-token, content-type",
     ],
     ["Content-Type", "application/json; charset=utf-8"],
     ["Cache-Control", "no-store"],
@@ -241,7 +241,7 @@ describe("HTTP response helpers", () => {
     expect(response.status).toBe(204);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
     expect(response.headers.get("Access-Control-Allow-Headers")).toBe(
-      "authorization, apikey, x-client-info, x-admin-password, x-lookup-token, content-type",
+      "authorization, apikey, x-client-info, x-admin-password, x-customer-phone, x-lookup-token, content-type",
     );
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(await response.text()).toBe("");
@@ -615,7 +615,7 @@ describe("appointments handler POST", () => {
 });
 
 describe("appointments handler GET", () => {
-  it("requires the phone query parameter", async () => {
+  it("requires X-Customer-Phone", async () => {
     const response = await handleAppointments(
       new Request("https://example.test/appointments", {
         headers: { "X-Lookup-Token": "secret" },
@@ -629,11 +629,25 @@ describe("appointments handler GET", () => {
     });
   });
 
-  it("requires X-Lookup-Token and ignores a token in the URL", async () => {
+  it("ignores customer credentials supplied only as query parameters", async () => {
     const response = await handleAppointments(
       new Request(
         "https://example.test/appointments?phone=%2B48600123456&token=url-secret",
       ),
+      appointmentDependencies(),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "MISSING_PHONE",
+    });
+  });
+
+  it("requires X-Lookup-Token when X-Customer-Phone is present", async () => {
+    const response = await handleAppointments(
+      new Request("https://example.test/appointments", {
+        headers: { "X-Customer-Phone": "+48600123456" },
+      }),
       appointmentDependencies(),
     );
 
@@ -645,10 +659,12 @@ describe("appointments handler GET", () => {
 
   it("returns a generic not-found response for invalid credentials", async () => {
     const response = await handleAppointments(
-      new Request(
-        "https://example.test/appointments?phone=invalid",
-        { headers: { "X-Lookup-Token": "wrong-token" } },
-      ),
+      new Request("https://example.test/appointments", {
+        headers: {
+          "X-Customer-Phone": "invalid",
+          "X-Lookup-Token": "wrong-token",
+        },
+      }),
       appointmentDependencies(),
     );
 
@@ -663,10 +679,12 @@ describe("appointments handler GET", () => {
     const getAppointment = vi.fn().mockResolvedValue(null);
     const hashLookupToken = vi.fn().mockResolvedValue("a".repeat(64));
     const response = await handleAppointments(
-      new Request(
-        "https://example.test/appointments?phone=%2B48+600-123-456",
-        { headers: { "x-LoOkUp-ToKeN": "header-secret" } },
-      ),
+      new Request("https://example.test/appointments", {
+        headers: {
+          "x-CuStOmEr-PhOnE": "+48 600-123-456",
+          "x-LoOkUp-ToKeN": "header-secret",
+        },
+      }),
       appointmentDependencies({ getAppointment, hashLookupToken }),
     );
 
@@ -698,10 +716,12 @@ describe("appointments handler GET", () => {
       technician_note: "must not leak",
     });
     const response = await handleAppointments(
-      new Request(
-        "https://example.test/appointments?phone=%2B48600123456",
-        { headers: { "X-Lookup-Token": "secret" } },
-      ),
+      new Request("https://example.test/appointments", {
+        headers: {
+          "X-Customer-Phone": "+48600123456",
+          "X-Lookup-Token": "secret",
+        },
+      }),
       appointmentDependencies({ getAppointment }),
     );
 
