@@ -1,6 +1,9 @@
+// @vitest-environment node
+
 import { describe, expect, it } from "vitest";
 
 import {
+  ApiProblem,
   mapBookingDatabaseError,
   normalizePhone,
   validateCalendarDate,
@@ -17,20 +20,66 @@ const validBody = {
   service_note: " Full service ",
 };
 
+function expectApiProblem(
+  action: () => unknown,
+  code: string,
+  status: number,
+): void {
+  try {
+    action();
+  } catch (error) {
+    expect(error).toBeInstanceOf(ApiProblem);
+    expect(error).toMatchObject({ code, status });
+    return;
+  }
+
+  throw new Error(`Expected ApiProblem ${code}/${status}`);
+}
+
 describe("normalizePhone", () => {
   it("normalizes Polish display formatting", () => {
     expect(normalizePhone("+48 600-123-456")).toBe("48600123456");
   });
 
+  it("accepts parentheses and Unicode whitespace", () => {
+    expect(normalizePhone("+48\u00a0(600) 123-456")).toBe("48600123456");
+  });
+
   it("rejects fewer than nine digits", () => {
-    expect(() => normalizePhone("123")).toThrowError(/INVALID_PHONE/);
+    expectApiProblem(() => normalizePhone("123"), "INVALID_PHONE", 400);
+  });
+
+  it("rejects more than fifteen digits", () => {
+    expectApiProblem(
+      () => normalizePhone("1234567890123456"),
+      "INVALID_PHONE",
+      400,
+    );
+  });
+
+  it("rejects letters instead of stripping them", () => {
+    expectApiProblem(
+      () => normalizePhone("+48 600-ABC-123-456"),
+      "INVALID_PHONE",
+      400,
+    );
+  });
+
+  it("rejects a plus sign outside the leading position", () => {
+    expectApiProblem(
+      () => normalizePhone("48+600123456"),
+      "INVALID_PHONE",
+      400,
+    );
   });
 });
 
 describe("validateCalendarDate", () => {
   it("rejects impossible dates", () => {
-    expect(() => validateCalendarDate("2026-02-30")).toThrowError(
-      /INVALID_DATE/,
+    expectApiProblem(
+      () => validateCalendarDate("2026-02-30"),
+      "INVALID_DATE",
+      400,
     );
   });
 });
@@ -50,39 +99,51 @@ describe("validateCreateAppointment", () => {
   });
 
   it("rejects non-string field values", () => {
-    expect(() =>
-      validateCreateAppointment(
-        { ...validBody, bike_model: 12 },
-        "2026-06-10",
-      ),
-    ).toThrowError(/INVALID_FIELDS/);
+    expectApiProblem(
+      () =>
+        validateCreateAppointment(
+          { ...validBody, bike_model: 12 },
+          "2026-06-10",
+        ),
+      "INVALID_FIELDS",
+      400,
+    );
   });
 
   it("rejects dates before the supplied Warsaw date", () => {
-    expect(() =>
-      validateCreateAppointment(
-        { ...validBody, date: "2026-06-09" },
-        "2026-06-10",
-      ),
-    ).toThrowError(/DATE_PAST/);
+    expectApiProblem(
+      () =>
+        validateCreateAppointment(
+          { ...validBody, date: "2026-06-09" },
+          "2026-06-10",
+        ),
+      "DATE_PAST",
+      400,
+    );
   });
 
   it.each(["10", "10:15", "9:30", "24:00"])(
     "rejects invalid appointment time %s",
     (time) => {
-      expect(() =>
-        validateCreateAppointment({ ...validBody, time }, "2026-06-10"),
-      ).toThrowError(/INVALID_TIME/);
+      expectApiProblem(
+        () =>
+          validateCreateAppointment({ ...validBody, time }, "2026-06-10"),
+        "INVALID_TIME",
+        400,
+      );
     },
   );
 
   it("rejects impossible appointment dates", () => {
-    expect(() =>
-      validateCreateAppointment(
-        { ...validBody, date: "2026-02-30" },
-        "2026-01-01",
-      ),
-    ).toThrowError(/INVALID_DATE/);
+    expectApiProblem(
+      () =>
+        validateCreateAppointment(
+          { ...validBody, date: "2026-02-30" },
+          "2026-01-01",
+        ),
+      "INVALID_DATE",
+      400,
+    );
   });
 
   it.each([
@@ -92,12 +153,15 @@ describe("validateCreateAppointment", () => {
     ["bike_model", 120],
     ["service_note", 2000],
   ] as const)("rejects %s longer than %i characters", (field, maxLength) => {
-    expect(() =>
-      validateCreateAppointment(
-        { ...validBody, [field]: "x".repeat(maxLength + 1) },
-        "2026-06-10",
-      ),
-    ).toThrowError(/INVALID_FIELDS/);
+    expectApiProblem(
+      () =>
+        validateCreateAppointment(
+          { ...validBody, [field]: "x".repeat(maxLength + 1) },
+          "2026-06-10",
+        ),
+      "INVALID_FIELDS",
+      400,
+    );
   });
 
   it.each([
@@ -107,12 +171,15 @@ describe("validateCreateAppointment", () => {
     "bike_model",
     "service_note",
   ] as const)("rejects an empty trimmed %s", (field) => {
-    expect(() =>
-      validateCreateAppointment(
-        { ...validBody, [field]: "   " },
-        "2026-06-10",
-      ),
-    ).toThrowError(/INVALID_FIELDS/);
+    expectApiProblem(
+      () =>
+        validateCreateAppointment(
+          { ...validBody, [field]: "   " },
+          "2026-06-10",
+        ),
+      "INVALID_FIELDS",
+      400,
+    );
   });
 });
 
@@ -126,7 +193,7 @@ describe("mapBookingDatabaseError", () => {
   ] as const)("maps %s to %s/%i", (databaseCode, apiCode, status) => {
     const problem = mapBookingDatabaseError({ code: databaseCode });
 
+    expect(problem).toBeInstanceOf(ApiProblem);
     expect(problem).toMatchObject({ code: apiCode, status });
-    expect(problem).toBeInstanceOf(Error);
   });
 });

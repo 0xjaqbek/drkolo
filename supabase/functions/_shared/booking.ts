@@ -51,8 +51,12 @@ function requiredString(
 }
 
 export function normalizePhone(value: string): string {
+  if (!/^\s*\+?[\d\s()-]+$/.test(value)) {
+    throw problem("INVALID_PHONE");
+  }
+
   const normalized = value.replace(/\D/g, "");
-  if (normalized.length < 9) {
+  if (normalized.length < 9 || normalized.length > 15) {
     throw problem("INVALID_PHONE");
   }
   return normalized;
