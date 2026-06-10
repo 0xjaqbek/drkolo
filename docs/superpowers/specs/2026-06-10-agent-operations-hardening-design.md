@@ -20,10 +20,10 @@ This phase covers:
 - OpenAPI and agent discovery documents;
 - deployment and end-to-end verification.
 
-Admin authentication is intentionally deferred to the next phase. Existing
-admin pages may require temporary database policies until their authentication
-work is complete, but public clients must no longer receive unrestricted
-appointment access.
+The calendar admin flow is included because removing anonymous appointment
+access would otherwise break the shop's operational tooling. Its existing
+password screen remains, but password verification and calendar data access
+move to protected Edge Functions.
 
 Shared distributed rate limiting is also deferred. Input validation, bounded
 payload sizes, and strict database permissions are required now. A durable rate
@@ -39,6 +39,8 @@ Supabase remains the system of record and API runtime:
   credential, as required by the Supabase gateway.
 - Edge Functions use a server-only Supabase credential for database operations.
 - The browser booking page calls the same Edge Functions as AI agents.
+- Calendar admin requests send the entered admin password to dedicated Edge
+  Functions, which compare it with a server-only secret before accessing data.
 
 This creates one public booking contract instead of maintaining separate browser
 and agent implementations.
@@ -166,6 +168,40 @@ new public status endpoint. The shop can continue to access them through its
 internal workflow. Token recovery and token rotation are out of scope; a
 customer who loses the token contacts the shop.
 
+## Admin Calendar API
+
+The existing calendar password screen and session behavior remain familiar.
+Unlike the current implementation, the compiled frontend does not contain the
+calendar password.
+
+After login, calendar hooks call protected endpoints with:
+
+```http
+Authorization: Bearer <supabase-anon-key>
+apikey: <supabase-anon-key>
+X-Admin-Password: <entered-password>
+```
+
+The functions compare `X-Admin-Password` with an `ADMIN_PASSWORD` Supabase
+secret using a timing-safe comparison. Invalid credentials return a generic
+`401 UNAUTHORIZED` response.
+
+Protected admin operations cover the current calendar features:
+
+- list appointments by date;
+- list pending appointments;
+- create a confirmed manual appointment;
+- update appointment status, duration, and technician note;
+- read and update working hours;
+- list, create, and delete blocked periods.
+
+The browser keeps the password in `sessionStorage` for the current tab, matching
+the existing interaction style. It is never persisted to `localStorage`, placed
+in a URL, logged, or returned by the server. Calendar logout clears it.
+
+Other existing password-gated tools are not migrated unless they access the
+appointment, working-hours, or blocked-time tables.
+
 ## Database Permissions
 
 Public clients must not directly read or update `service_appointments`.
@@ -174,17 +210,14 @@ The migration:
 
 - removes anonymous `SELECT` and `UPDATE` policies from appointments;
 - removes anonymous write policies from working hours and blocked times;
-- retains only the minimum reads needed by the customer UI, or moves those reads
-  behind Edge Functions;
+- moves public customer and calendar-admin reads and writes behind Edge
+  Functions;
 - grants execution of narrowly scoped public database functions only to the
   server role used by Edge Functions;
 - ensures customer-facing functions select explicit columns.
 
-Because admin pages currently use anonymous database access, the deployment
-must identify the temporary compatibility policies they still need. Those
-policies must be restricted to admin-only operations as far as the current
-architecture permits and removed during the admin-authentication phase. No
-policy may permit anonymous appointment reads after this phase.
+No policy may permit anonymous appointment, working-hour, or blocked-time
+writes after this phase. Anonymous appointment reads are also removed.
 
 ## Customer Booking Page
 
@@ -284,8 +317,11 @@ Testing is divided into four layers:
    requirements, privacy-safe errors, and database failure handling.
 3. **Database tests:** uniqueness under concurrent inserts, rejected-slot reuse,
    blocked periods, closed days, and RLS denial for anonymous appointment reads.
-4. **Frontend tests:** `/rezerwacja` calls the API, handles conflicts and server
-   errors, and does not insert directly into the appointment table.
+4. **Frontend tests:** `/rezerwacja` calls the public API, handles conflicts and
+   server errors, and does not insert directly into the appointment table.
+5. **Admin tests:** calendar login is validated by the server, protected hooks
+   send the session password, invalid passwords expose no data, and all current
+   calendar operations remain available.
 
 All new behavior follows red-green-refactor. Production verification runs the
 full test suite, lint, build, migration checks, deployment smoke tests, and a
@@ -299,12 +335,15 @@ Deployment order:
 1. Back up the relevant tables and inspect current policies and constraints.
 2. Deploy database migration and database functions.
 3. Verify public appointment reads are denied.
-4. Deploy updated Edge Functions and secrets.
+4. Set the `ADMIN_PASSWORD` secret and deploy updated public and admin Edge
+   Functions.
 5. Smoke-test services and availability.
 6. Create one controlled future booking, retrieve it using its token, and verify
    a wrong token returns `404`.
-7. Deploy the frontend and discovery files.
-8. Verify `drkolo.pl`, `llms.txt`, OpenAPI, manifest, and the customer booking
+7. Verify calendar login, appointment reads, manual creation, appointment
+   updates, working-hour editing, and blocked-time editing.
+8. Deploy the frontend and discovery files.
+9. Verify `drkolo.pl`, `llms.txt`, OpenAPI, manifest, and the customer booking
    flow.
 
 Rollback retains the new columns and index but restores the previous function
@@ -313,7 +352,7 @@ restored as part of rollback.
 
 ## Out Of Scope
 
-- admin login and role-based authorization;
+- role-based or multi-user admin accounts;
 - customer token recovery or rotation;
 - cancellation or rescheduling by agents;
 - payments;
