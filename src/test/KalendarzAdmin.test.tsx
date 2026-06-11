@@ -18,6 +18,7 @@ const apiMocks = vi.hoisted(() => ({
   updateAppointment: vi.fn(),
   updateWorkingHours: vi.fn(),
   verifyCalendarPassword: vi.fn(),
+  resetCreateAppointmentMutation: vi.fn(),
 }));
 
 vi.mock('@/lib/calendarAdminApi', async () => {
@@ -25,6 +26,25 @@ vi.mock('@/lib/calendarAdminApi', async () => {
     '@/lib/calendarAdminApi',
   );
   return { ...actual, ...apiMocks };
+});
+
+vi.mock('@/hooks/useAppointments', async () => {
+  const actual = await vi.importActual<typeof import('@/hooks/useAppointments')>(
+    '@/hooks/useAppointments',
+  );
+  return {
+    ...actual,
+    useCreateAppointment: () => {
+      const mutation = actual.useCreateAppointment();
+      return {
+        ...mutation,
+        reset: () => {
+          apiMocks.resetCreateAppointmentMutation();
+          mutation.reset();
+        },
+      };
+    },
+  };
 });
 
 vi.mock('@/components/ui/calendar', () => ({
@@ -160,6 +180,22 @@ describe('KalendarzAdmin authentication', () => {
     expect(passwordInput).toHaveValue('');
     expect(screen.getByRole('button', { name: 'Zaloguj' })).toBeDisabled();
     expect(apiMocks.verifyCalendarPassword).toHaveBeenCalledTimes(1);
+    expect(sessionStorage.getItem(CALENDAR_SESSION_KEY)).toBeNull();
+  });
+
+  it('resets the manual create observer before clearing the session on logout', async () => {
+    apiMocks.verifyCalendarPassword.mockResolvedValue(true);
+    apiMocks.resetCreateAppointmentMutation.mockImplementation(() => {
+      expect(sessionStorage.getItem(CALENDAR_SESSION_KEY)).toBe(
+        'server-secret',
+      );
+    });
+    renderWithProviders(<KalendarzAdmin />);
+
+    await login();
+    fireEvent.click(screen.getByRole('button', { name: 'Wyloguj' }));
+
+    expect(apiMocks.resetCreateAppointmentMutation).toHaveBeenCalledTimes(1);
     expect(sessionStorage.getItem(CALENDAR_SESSION_KEY)).toBeNull();
   });
 });

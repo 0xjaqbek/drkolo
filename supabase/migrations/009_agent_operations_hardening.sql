@@ -31,49 +31,98 @@ $migration$;
 
 do $migration$
 declare
-  duplicate_group_count bigint;
-  duplicate_examples text;
+  overlap_pair_count bigint;
+  overlap_examples text;
 begin
   select pg_catalog.count(*)
-  into duplicate_group_count
-  from (
-    select 1
-    from public.service_appointments
-    where status <> 'odrzucone'
-    group by appointment_date, arrival_time
-    having pg_catalog.count(*) > 1
-  ) as duplicate_groups;
+  into overlap_pair_count
+  from public.service_appointments as existing
+  join public.service_appointments as candidate
+    on existing.appointment_date = candidate.appointment_date
+    and existing.id < candidate.id
+  where existing.status <> 'odrzucone'
+    and candidate.status <> 'odrzucone'
+    and existing.appointment_date + existing.arrival_time
+      < candidate.appointment_date + candidate.arrival_time
+        + pg_catalog.make_interval(
+          mins => pg_catalog.coalesce(
+            candidate.estimated_duration_minutes,
+            60
+          )
+        )
+    and existing.appointment_date + existing.arrival_time
+        + pg_catalog.make_interval(
+          mins => pg_catalog.coalesce(
+            existing.estimated_duration_minutes,
+            60
+          )
+        )
+      > candidate.appointment_date + candidate.arrival_time;
 
-  if duplicate_group_count > 0 then
+  if overlap_pair_count > 0 then
     select pg_catalog.string_agg(
       pg_catalog.format(
-        '%s at %s (%s active rows)',
-        duplicate_group.appointment_date,
-        duplicate_group.arrival_time,
-        duplicate_group.row_count
+        '%s: %s (%s min) overlaps %s (%s min)',
+        overlap_pair.appointment_date,
+        overlap_pair.existing_time,
+        overlap_pair.existing_duration,
+        overlap_pair.candidate_time,
+        overlap_pair.candidate_duration
       ),
-      ', ' order by duplicate_group.appointment_date, duplicate_group.arrival_time
+      ', ' order by
+        overlap_pair.appointment_date,
+        overlap_pair.existing_time,
+        overlap_pair.candidate_time
     )
-    into duplicate_examples
+    into overlap_examples
     from (
       select
-        appointment_date,
-        arrival_time,
-        pg_catalog.count(*) as row_count
-      from public.service_appointments
-      where status <> 'odrzucone'
-      group by appointment_date, arrival_time
-      having pg_catalog.count(*) > 1
-      order by appointment_date, arrival_time
+        existing.appointment_date,
+        existing.arrival_time as existing_time,
+        pg_catalog.coalesce(
+          existing.estimated_duration_minutes,
+          60
+        ) as existing_duration,
+        candidate.arrival_time as candidate_time,
+        pg_catalog.coalesce(
+          candidate.estimated_duration_minutes,
+          60
+        ) as candidate_duration
+      from public.service_appointments as existing
+      join public.service_appointments as candidate
+        on existing.appointment_date = candidate.appointment_date
+        and existing.id < candidate.id
+      where existing.status <> 'odrzucone'
+        and candidate.status <> 'odrzucone'
+        and existing.appointment_date + existing.arrival_time
+          < candidate.appointment_date + candidate.arrival_time
+            + pg_catalog.make_interval(
+              mins => pg_catalog.coalesce(
+                candidate.estimated_duration_minutes,
+                60
+              )
+            )
+        and existing.appointment_date + existing.arrival_time
+            + pg_catalog.make_interval(
+              mins => pg_catalog.coalesce(
+                existing.estimated_duration_minutes,
+                60
+              )
+            )
+          > candidate.appointment_date + candidate.arrival_time
+      order by
+        existing.appointment_date,
+        existing.arrival_time,
+        candidate.arrival_time
       limit 10
-    ) as duplicate_group;
+    ) as overlap_pair;
 
     raise exception
-      'Cannot create service_appointments_active_slot_unique: found % duplicate active slot group(s). Examples: %',
-      duplicate_group_count,
-      duplicate_examples
+      'Cannot create service_appointments_active_slot_unique: found % overlapping active appointment pair(s). Examples: %',
+      overlap_pair_count,
+      overlap_examples
       using hint =
-        'Resolve duplicate non-rejected appointments before applying this migration.';
+        'Resolve overlapping non-rejected appointments before applying this migration.';
   end if;
 end
 $migration$;
@@ -199,15 +248,24 @@ as $function$
           )
           from pg_catalog.generate_series(
             p_date + working_hours.open_time,
-            p_date + working_hours.close_time - interval '30 minutes',
+            p_date + working_hours.close_time - interval '60 minutes',
             interval '30 minutes'
           ) as candidate(slot_start)
           where not exists (
             select 1
             from public.service_appointments as appointment
             where appointment.appointment_date = p_date
-              and appointment.arrival_time = candidate.slot_start::time
               and appointment.status <> 'odrzucone'
+              and candidate.slot_start
+                < appointment.appointment_date + appointment.arrival_time
+                  + pg_catalog.make_interval(
+                    mins => pg_catalog.coalesce(
+                      appointment.estimated_duration_minutes,
+                      60
+                    )
+                  )
+              and candidate.slot_start + interval '60 minutes'
+                > appointment.appointment_date + appointment.arrival_time
           )
             and not exists (
               select 1
@@ -215,7 +273,7 @@ as $function$
               where blocked_time.block_date = p_date
                 and candidate.slot_start
                   < blocked_time.block_date + blocked_time.end_time
-                and candidate.slot_start + interval '30 minutes'
+                and candidate.slot_start + interval '60 minutes'
                   > blocked_time.block_date + blocked_time.start_time
             )
         ),
@@ -257,6 +315,17 @@ declare
   v_created_status text;
   v_constraint_name text;
 begin
+  if p_appointment_date is null then
+    raise exception using
+      errcode = 'DRK02',
+      message = 'invalid slot';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    1146243923,
+    p_appointment_date - date '2000-01-01'
+  );
+
   select
     working_hours.open_time,
     working_hours.close_time,
@@ -290,7 +359,7 @@ begin
   end if;
 
   v_slot_start := p_appointment_date + p_arrival_time;
-  v_slot_end := v_slot_start + interval '30 minutes';
+  v_slot_end := v_slot_start + interval '60 minutes';
 
   if v_slot_start < p_appointment_date + v_open_time
     or v_slot_end > p_appointment_date + v_close_time
@@ -316,8 +385,17 @@ begin
     select 1
     from public.service_appointments as appointment
     where appointment.appointment_date = p_appointment_date
-      and appointment.arrival_time = p_arrival_time
       and appointment.status <> 'odrzucone'
+      and v_slot_start
+        < appointment.appointment_date + appointment.arrival_time
+          + pg_catalog.make_interval(
+            mins => pg_catalog.coalesce(
+              appointment.estimated_duration_minutes,
+              60
+            )
+          )
+      and v_slot_end
+        > appointment.appointment_date + appointment.arrival_time
   ) then
     raise exception using
       errcode = 'DRK03',
@@ -336,6 +414,7 @@ begin
       service_note,
       lookup_token_hash,
       status,
+      estimated_duration_minutes,
       source
     )
     values (
@@ -349,6 +428,7 @@ begin
       p_service_note,
       p_lookup_token_hash,
       'zapytanie',
+      60,
       'ai_agent'
     )
     returning appointment.id, appointment.status
@@ -368,6 +448,463 @@ begin
 
   return query
   select v_created_id, v_created_status;
+end
+$function$;
+
+create or replace function public.create_admin_appointment(
+  p_appointment_date date,
+  p_arrival_time time without time zone,
+  p_customer_name text,
+  p_customer_phone text,
+  p_customer_phone_normalized text,
+  p_bike_manufacturer text,
+  p_bike_model text,
+  p_service_note text,
+  p_estimated_duration_minutes integer
+)
+returns table (
+  id uuid,
+  appointment_date date,
+  arrival_time time without time zone,
+  customer_name text,
+  customer_phone text,
+  bike_manufacturer text,
+  bike_model text,
+  service_note text,
+  status text,
+  estimated_duration_minutes integer,
+  technician_note text,
+  source text,
+  created_at timestamp with time zone
+)
+language plpgsql
+security definer
+set search_path = pg_catalog
+as $function$
+declare
+  v_open_time time without time zone;
+  v_close_time time without time zone;
+  v_is_open boolean;
+  v_slot_start timestamp without time zone;
+  v_slot_end timestamp without time zone;
+  v_constraint_name text;
+begin
+  if p_appointment_date is null
+    or p_estimated_duration_minutes is null
+    or p_estimated_duration_minutes < 1
+    or p_estimated_duration_minutes > 1440
+  then
+    raise exception using
+      errcode = 'DRK02',
+      message = 'invalid slot';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    1146243923,
+    p_appointment_date - date '2000-01-01'
+  );
+
+  select
+    working_hours.open_time,
+    working_hours.close_time,
+    working_hours.is_open
+  into
+    v_open_time,
+    v_close_time,
+    v_is_open
+  from public.service_working_hours as working_hours
+  where working_hours.day_of_week =
+    extract(dow from p_appointment_date)::integer;
+
+  if not found
+    or not pg_catalog.coalesce(v_is_open, false)
+    or v_open_time is null
+    or v_close_time is null
+    or v_close_time <= v_open_time
+  then
+    raise exception using
+      errcode = 'DRK01',
+      message = 'day closed';
+  end if;
+
+  if p_arrival_time is null
+    or extract(second from p_arrival_time) <> 0
+    or mod(extract(minute from p_arrival_time)::integer, 30) <> 0
+  then
+    raise exception using
+      errcode = 'DRK02',
+      message = 'invalid slot';
+  end if;
+
+  v_slot_start := p_appointment_date + p_arrival_time;
+  v_slot_end := v_slot_start + pg_catalog.make_interval(
+    mins => p_estimated_duration_minutes
+  );
+
+  if v_slot_start < p_appointment_date + v_open_time
+    or v_slot_end > p_appointment_date + v_close_time
+  then
+    raise exception using
+      errcode = 'DRK02',
+      message = 'invalid slot';
+  end if;
+
+  if exists (
+    select 1
+    from public.service_blocked_times as blocked_time
+    where blocked_time.block_date = p_appointment_date
+      and v_slot_start < blocked_time.block_date + blocked_time.end_time
+      and v_slot_end > blocked_time.block_date + blocked_time.start_time
+  ) then
+    raise exception using
+      errcode = 'DRK02',
+      message = 'slot blocked';
+  end if;
+
+  if exists (
+    select 1
+    from public.service_appointments as appointment
+    where appointment.appointment_date = p_appointment_date
+      and appointment.status <> 'odrzucone'
+      and v_slot_start
+        < appointment.appointment_date + appointment.arrival_time
+          + pg_catalog.make_interval(
+            mins => pg_catalog.coalesce(
+              appointment.estimated_duration_minutes,
+              60
+            )
+          )
+      and v_slot_end
+        > appointment.appointment_date + appointment.arrival_time
+  ) then
+    raise exception using
+      errcode = 'DRK03',
+      message = 'slot taken';
+  end if;
+
+  begin
+    return query
+    insert into public.service_appointments as appointment (
+      appointment_date,
+      arrival_time,
+      customer_name,
+      customer_phone,
+      customer_phone_normalized,
+      bike_manufacturer,
+      bike_model,
+      service_note,
+      status,
+      estimated_duration_minutes,
+      technician_note,
+      source
+    )
+    values (
+      p_appointment_date,
+      p_arrival_time,
+      p_customer_name,
+      p_customer_phone,
+      p_customer_phone_normalized,
+      p_bike_manufacturer,
+      p_bike_model,
+      p_service_note,
+      'potwierdzone',
+      p_estimated_duration_minutes,
+      null,
+      'manual'
+    )
+    returning
+      appointment.id,
+      appointment.appointment_date,
+      appointment.arrival_time,
+      appointment.customer_name,
+      appointment.customer_phone,
+      appointment.bike_manufacturer,
+      appointment.bike_model,
+      appointment.service_note,
+      appointment.status,
+      appointment.estimated_duration_minutes,
+      appointment.technician_note,
+      appointment.source,
+      appointment.created_at;
+  exception
+    when unique_violation then
+      get stacked diagnostics v_constraint_name = constraint_name;
+
+      if v_constraint_name = 'service_appointments_active_slot_unique' then
+        raise exception using
+          errcode = 'DRK03',
+          message = 'slot taken';
+      end if;
+
+      raise;
+  end;
+end
+$function$;
+
+create or replace function public.update_admin_appointment(
+  p_id uuid,
+  p_apply_status boolean default false,
+  p_status text default null,
+  p_apply_appointment_date boolean default false,
+  p_appointment_date date default null,
+  p_apply_arrival_time boolean default false,
+  p_arrival_time time without time zone default null,
+  p_apply_estimated_duration_minutes boolean default false,
+  p_estimated_duration_minutes integer default null,
+  p_apply_technician_note boolean default false,
+  p_technician_note text default null
+)
+returns table (
+  id uuid,
+  appointment_date date,
+  arrival_time time without time zone,
+  customer_name text,
+  customer_phone text,
+  bike_manufacturer text,
+  bike_model text,
+  service_note text,
+  status text,
+  estimated_duration_minutes integer,
+  technician_note text,
+  source text,
+  created_at timestamp with time zone
+)
+language plpgsql
+security definer
+set search_path = pg_catalog
+as $function$
+declare
+  v_existing public.service_appointments%rowtype;
+  v_target_date date;
+  v_target_time time without time zone;
+  v_target_status text;
+  v_target_duration integer;
+  v_effective_duration integer;
+  v_scheduling_change boolean;
+  v_open_time time without time zone;
+  v_close_time time without time zone;
+  v_is_open boolean;
+  v_slot_start timestamp without time zone;
+  v_slot_end timestamp without time zone;
+  v_constraint_name text;
+begin
+  select appointment.*
+  into v_existing
+  from public.service_appointments as appointment
+  where appointment.id = p_id
+  for update;
+
+  if not found then
+    return;
+  end if;
+
+  v_target_date := case
+    when p_apply_appointment_date then p_appointment_date
+    else v_existing.appointment_date
+  end;
+  v_target_time := case
+    when p_apply_arrival_time then p_arrival_time
+    else v_existing.arrival_time
+  end;
+  v_target_status := case
+    when p_apply_status then p_status
+    else v_existing.status
+  end;
+  v_target_duration := case
+    when p_apply_estimated_duration_minutes
+      then p_estimated_duration_minutes
+    else v_existing.estimated_duration_minutes
+  end;
+  v_scheduling_change :=
+    (
+      p_apply_status
+      and p_status is distinct from v_existing.status
+    )
+    or (
+      p_apply_appointment_date
+      and p_appointment_date is distinct from v_existing.appointment_date
+    )
+    or (
+      p_apply_arrival_time
+      and p_arrival_time is distinct from v_existing.arrival_time
+    )
+    or (
+      p_apply_estimated_duration_minutes
+      and p_estimated_duration_minutes
+        is distinct from v_existing.estimated_duration_minutes
+    );
+
+  if pg_catalog.coalesce(v_scheduling_change, false) then
+    if v_target_status is null
+      or v_target_status not in (
+        'zapytanie',
+        'potwierdzone',
+        'odrzucone',
+        'zakonczone'
+      )
+    then
+      raise exception using
+        errcode = 'DRK02',
+        message = 'invalid status';
+    end if;
+
+    if v_target_duration is not null
+      and (v_target_duration < 1 or v_target_duration > 1440)
+    then
+      raise exception using
+        errcode = 'DRK02',
+        message = 'invalid slot';
+    end if;
+    v_effective_duration := pg_catalog.coalesce(v_target_duration, 60);
+
+    if v_target_date is null then
+      raise exception using
+        errcode = 'DRK02',
+        message = 'invalid slot';
+    end if;
+
+    perform pg_catalog.pg_advisory_xact_lock(
+      1146243923,
+      v_target_date - date '2000-01-01'
+    );
+
+    select
+      working_hours.open_time,
+      working_hours.close_time,
+      working_hours.is_open
+    into
+      v_open_time,
+      v_close_time,
+      v_is_open
+    from public.service_working_hours as working_hours
+    where working_hours.day_of_week =
+      extract(dow from v_target_date)::integer;
+
+    if not found
+      or not pg_catalog.coalesce(v_is_open, false)
+      or v_open_time is null
+      or v_close_time is null
+      or v_close_time <= v_open_time
+    then
+      raise exception using
+        errcode = 'DRK01',
+        message = 'day closed';
+    end if;
+
+    if v_target_time is null
+      or extract(second from v_target_time) <> 0
+      or mod(extract(minute from v_target_time)::integer, 30) <> 0
+    then
+      raise exception using
+        errcode = 'DRK02',
+        message = 'invalid slot';
+    end if;
+
+    v_slot_start := v_target_date + v_target_time;
+    v_slot_end := v_slot_start + pg_catalog.make_interval(
+      mins => v_effective_duration
+    );
+
+    if v_slot_start < v_target_date + v_open_time
+      or v_slot_end > v_target_date + v_close_time
+    then
+      raise exception using
+        errcode = 'DRK02',
+        message = 'invalid slot';
+    end if;
+
+    if exists (
+      select 1
+      from public.service_blocked_times as blocked_time
+      where blocked_time.block_date = v_target_date
+        and v_slot_start < blocked_time.block_date + blocked_time.end_time
+        and v_slot_end > blocked_time.block_date + blocked_time.start_time
+    ) then
+      raise exception using
+        errcode = 'DRK02',
+        message = 'slot blocked';
+    end if;
+
+    if v_target_status <> 'odrzucone'
+      and exists (
+        select 1
+        from public.service_appointments as appointment
+        where appointment.id <> p_id
+          and appointment.appointment_date = v_target_date
+          and appointment.status <> 'odrzucone'
+          and v_slot_start
+            < appointment.appointment_date + appointment.arrival_time
+              + pg_catalog.make_interval(
+                mins => pg_catalog.coalesce(
+                  appointment.estimated_duration_minutes,
+                  60
+                )
+              )
+          and v_slot_end
+            > appointment.appointment_date + appointment.arrival_time
+      )
+    then
+      raise exception using
+        errcode = 'DRK03',
+        message = 'slot taken';
+    end if;
+  end if;
+
+  begin
+    update public.service_appointments as appointment
+    set
+      status = case
+        when p_apply_status then p_status
+        else appointment.status
+      end,
+      appointment_date = case
+        when p_apply_appointment_date then p_appointment_date
+        else appointment.appointment_date
+      end,
+      arrival_time = case
+        when p_apply_arrival_time then p_arrival_time
+        else appointment.arrival_time
+      end,
+      estimated_duration_minutes = case
+        when p_apply_estimated_duration_minutes
+          then p_estimated_duration_minutes
+        else appointment.estimated_duration_minutes
+      end,
+      technician_note = case
+        when p_apply_technician_note then p_technician_note
+        else appointment.technician_note
+      end
+    where appointment.id = p_id;
+  exception
+    when unique_violation then
+      get stacked diagnostics v_constraint_name = constraint_name;
+
+      if v_constraint_name = 'service_appointments_active_slot_unique' then
+        raise exception using
+          errcode = 'DRK03',
+          message = 'slot taken';
+      end if;
+
+      raise;
+  end;
+
+  return query
+  select
+    appointment.id,
+    appointment.appointment_date,
+    appointment.arrival_time,
+    appointment.customer_name,
+    appointment.customer_phone,
+    appointment.bike_manufacturer,
+    appointment.bike_model,
+    appointment.service_note,
+    appointment.status,
+    appointment.estimated_duration_minutes,
+    appointment.technician_note,
+    appointment.source,
+    appointment.created_at
+  from public.service_appointments as appointment
+  where appointment.id = p_id;
 end
 $function$;
 
@@ -498,6 +1035,56 @@ grant execute on function public.create_public_appointment(
   text,
   text,
   text,
+  text
+) to service_role;
+
+revoke execute on function public.create_admin_appointment(
+  date,
+  time without time zone,
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  integer
+) from public, anon, authenticated;
+grant execute on function public.create_admin_appointment(
+  date,
+  time without time zone,
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  integer
+) to service_role;
+
+revoke execute on function public.update_admin_appointment(
+  uuid,
+  boolean,
+  text,
+  boolean,
+  date,
+  boolean,
+  time without time zone,
+  boolean,
+  integer,
+  boolean,
+  text
+) from public, anon, authenticated;
+grant execute on function public.update_admin_appointment(
+  uuid,
+  boolean,
+  text,
+  boolean,
+  date,
+  boolean,
+  time without time zone,
+  boolean,
+  integer,
+  boolean,
   text
 ) to service_role;
 

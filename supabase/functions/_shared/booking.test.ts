@@ -26,6 +26,7 @@ import {
 } from "../appointments/index.ts";
 import {
   type CalendarAdminDependencies,
+  createCalendarAdminDependencies,
   handleCalendarAdmin,
 } from "../calendar-admin/index.ts";
 
@@ -1203,94 +1204,12 @@ describe("calendar admin route mapping", () => {
     );
   });
 
-  it("rejects manual creation when the selected weekday is closed", async () => {
-    const deps = calendarDependencies({
-      listWorkingHours: vi.fn().mockResolvedValue([
-        { ...workingHoursRow, is_open: false, open_time: null, close_time: null },
-      ]),
-    });
-    const response = await handleCalendarAdmin(
-      calendarJsonRequest("appointments", "POST", {
-        appointment_date: "2026-06-11",
-        arrival_time: "10:30",
-        customer_name: "Jan",
-        customer_phone: "+48600123456",
-        bike_manufacturer: "Trek",
-        bike_model: "Fuel EX",
-        service_note: null,
-        estimated_duration_minutes: 60,
-      }),
-      deps,
-    );
-
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({
-      error: "Day closed",
-      code: "DAY_CLOSED",
-    });
-    expect(deps.createAppointment).not.toHaveBeenCalled();
-  });
-
-  it("rejects manual creation when the half-hour slot overlaps a block", async () => {
-    const deps = calendarDependencies({
-      listBlockedTimes: vi.fn().mockResolvedValue([
-        { ...blockedTimeRow, start_time: "10:15:00", end_time: "10:45:00" },
-      ]),
-    });
-    const response = await handleCalendarAdmin(
-      calendarJsonRequest("appointments", "POST", {
-        appointment_date: "2026-06-11",
-        arrival_time: "10:30",
-        customer_name: "Jan",
-        customer_phone: "+48600123456",
-        bike_manufacturer: "Trek",
-        bike_model: "Fuel EX",
-        service_note: null,
-        estimated_duration_minutes: 60,
-      }),
-      deps,
-    );
-
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({
-      error: "Invalid slot",
-      code: "INVALID_SLOT",
-    });
-    expect(deps.createAppointment).not.toHaveBeenCalled();
-  });
-
-  it("rejects manual creation against a stale active appointment", async () => {
-    const deps = calendarDependencies({
-      listAppointments: vi.fn().mockResolvedValue([adminAppointmentRow]),
-    });
-    const response = await handleCalendarAdmin(
-      calendarJsonRequest("appointments", "POST", {
-        appointment_date: "2026-06-11",
-        arrival_time: "10:30",
-        customer_name: "Jan",
-        customer_phone: "+48600123456",
-        bike_manufacturer: "Trek",
-        bike_model: "Fuel EX",
-        service_note: null,
-        estimated_duration_minutes: 60,
-      }),
-      deps,
-    );
-
-    expect(response.status).toBe(409);
-    await expect(response.json()).resolves.toEqual({
-      error: "Slot taken",
-      code: "SLOT_TAKEN",
-    });
-    expect(deps.createAppointment).not.toHaveBeenCalled();
-  });
-
-  it("rejects manual creation outside the working-hour window", async () => {
+  it("delegates manual scheduling checks to the create RPC dependency", async () => {
     const deps = calendarDependencies();
     const response = await handleCalendarAdmin(
       calendarJsonRequest("appointments", "POST", {
         appointment_date: "2026-06-11",
-        arrival_time: "19:00",
+        arrival_time: "18:30",
         customer_name: "Jan",
         customer_phone: "+48600123456",
         bike_manufacturer: "Trek",
@@ -1301,13 +1220,49 @@ describe("calendar admin route mapping", () => {
       deps,
     );
 
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({
-      error: "Invalid slot",
-      code: "INVALID_SLOT",
-    });
-    expect(deps.createAppointment).not.toHaveBeenCalled();
+    expect(response.status).toBe(201);
+    expect(deps.createAppointment).toHaveBeenCalledTimes(1);
+    expect(deps.listWorkingHours).not.toHaveBeenCalled();
+    expect(deps.listAppointments).not.toHaveBeenCalled();
+    expect(deps.listBlockedTimes).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ["DRK01", "Day closed", "DAY_CLOSED"],
+    ["DRK02", "Invalid slot", "INVALID_SLOT"],
+  ] as const)(
+    "maps create RPC %s scheduling failures",
+    async (databaseCode, message, apiCode) => {
+      const deps = calendarDependencies({
+        createAppointment: vi.fn().mockRejectedValue({
+          code: databaseCode,
+          message: message.toLowerCase(),
+        }),
+      });
+      const response = await handleCalendarAdmin(
+        calendarJsonRequest("appointments", "POST", {
+          appointment_date: "2026-06-11",
+          arrival_time: "10:30",
+          customer_name: "Jan",
+          customer_phone: "+48600123456",
+          bike_manufacturer: "Trek",
+          bike_model: "Fuel EX",
+          service_note: null,
+          estimated_duration_minutes: 60,
+        }),
+        deps,
+      );
+
+      expect(response.status).toBe(400);
+      await expect(response.json()).resolves.toEqual({
+        error: message,
+        code: apiCode,
+      });
+      expect(deps.listWorkingHours).not.toHaveBeenCalled();
+      expect(deps.listAppointments).not.toHaveBeenCalled();
+      expect(deps.listBlockedTimes).not.toHaveBeenCalled();
+    },
+  );
 
   it("maps PATCH appointments with only the update allowlist", async () => {
     const updatedRow = {
@@ -1581,12 +1536,10 @@ describe("calendar admin validation and errors", () => {
     expect(deps.updateAppointment).not.toHaveBeenCalled();
   });
 
-  it("allows status, duration, and notes to change without revalidating a past date", async () => {
+  it("allows a note-only edit without requiring a new non-past date", async () => {
     const updateAppointment = vi.fn().mockResolvedValue({
       ...adminAppointmentRow,
       appointment_date: "2026-06-09",
-      status: "zakonczone",
-      estimated_duration_minutes: 90,
       technician_note: "Finished",
     });
     const response = await handleCalendarAdmin(
@@ -1594,8 +1547,6 @@ describe("calendar admin validation and errors", () => {
         `appointments&id=${calendarRowId}`,
         "PATCH",
         {
-          status: "zakonczone",
-          estimated_duration_minutes: 90,
           technician_note: " Finished ",
         },
       ),
@@ -1604,8 +1555,6 @@ describe("calendar admin validation and errors", () => {
 
     expect(response.status).toBe(200);
     expect(updateAppointment).toHaveBeenCalledWith(calendarRowId, {
-      status: "zakonczone",
-      estimated_duration_minutes: 90,
       technician_note: "Finished",
     });
   });
@@ -1841,14 +1790,16 @@ describe("calendar admin validation and errors", () => {
   });
 
   it.each([
-    ["POST", "createAppointment"],
-    ["PATCH", "updateAppointment"],
+    ["POST", "createAppointment", "23505"],
+    ["POST", "createAppointment", "DRK03"],
+    ["PATCH", "updateAppointment", "23505"],
+    ["PATCH", "updateAppointment", "DRK03"],
   ] as const)(
-    "maps appointment %s unique violations to SLOT_TAKEN",
-    async (method, dependencyName) => {
+    "maps appointment %s %s conflicts to SLOT_TAKEN",
+    async (method, dependencyName, databaseCode) => {
       const deps = calendarDependencies({
         [dependencyName]: vi.fn().mockRejectedValue({
-          code: "23505",
+          code: databaseCode,
           message: `duplicate with ${calendarAdminPassword}`,
         }),
       });
@@ -1972,6 +1923,73 @@ describe("calendar admin validation and errors", () => {
 });
 
 describe("calendar admin production adapter", () => {
+  it("uses appointment RPCs and preserves omitted versus explicit null updates", async () => {
+    const createdRow = {
+      ...adminAppointmentRow,
+      status: "potwierdzone",
+      source: "manual",
+      technician_note: null,
+    };
+    const updatedRow = {
+      ...createdRow,
+      estimated_duration_minutes: null,
+      technician_note: null,
+    };
+    const rpc = vi.fn()
+      .mockResolvedValueOnce({ data: [createdRow], error: null })
+      .mockResolvedValueOnce({ data: [updatedRow], error: null });
+    const from = vi.fn(() => {
+      throw new Error("appointment mutations must not use table writes");
+    });
+    const deps = createCalendarAdminDependencies({ from, rpc } as never);
+
+    await expect(deps.createAppointment({
+      appointment_date: "2026-06-11",
+      arrival_time: "10:30:00",
+      customer_name: "Jan Kowalski",
+      customer_phone: "+48 600-123-456",
+      customer_phone_normalized: "48600123456",
+      bike_manufacturer: "Trek",
+      bike_model: "Fuel EX",
+      service_note: "Full service",
+      status: "potwierdzone",
+      estimated_duration_minutes: 60,
+      technician_note: null,
+      source: "manual",
+    })).resolves.toEqual(createdRow);
+
+    await expect(deps.updateAppointment(calendarRowId, {
+      estimated_duration_minutes: null,
+      technician_note: null,
+    })).resolves.toEqual(updatedRow);
+
+    expect(from).not.toHaveBeenCalled();
+    expect(rpc).toHaveBeenNthCalledWith(1, "create_admin_appointment", {
+      p_appointment_date: "2026-06-11",
+      p_arrival_time: "10:30:00",
+      p_customer_name: "Jan Kowalski",
+      p_customer_phone: "+48 600-123-456",
+      p_customer_phone_normalized: "48600123456",
+      p_bike_manufacturer: "Trek",
+      p_bike_model: "Fuel EX",
+      p_service_note: "Full service",
+      p_estimated_duration_minutes: 60,
+    });
+    expect(rpc).toHaveBeenNthCalledWith(2, "update_admin_appointment", {
+      p_id: calendarRowId,
+      p_apply_status: false,
+      p_status: null,
+      p_apply_appointment_date: false,
+      p_appointment_date: null,
+      p_apply_arrival_time: false,
+      p_arrival_time: null,
+      p_apply_estimated_duration_minutes: true,
+      p_estimated_duration_minutes: null,
+      p_apply_technician_note: true,
+      p_technician_note: null,
+    });
+  });
+
   it("keeps service-role setup guarded, server-only, and non-persistent", () => {
     const moduleUrl = new URL("../calendar-admin/index.ts", import.meta.url);
     const source = readFileSync(moduleUrl, "utf8");

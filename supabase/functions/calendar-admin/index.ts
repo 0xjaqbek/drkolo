@@ -155,6 +155,10 @@ interface CalendarAdminQuery<T> extends
 
 interface CalendarAdminClient {
   from<T>(table: CalendarAdminTable): CalendarAdminQuery<T>;
+  rpc<T>(
+    functionName: string,
+    args: Record<string, unknown>,
+  ): PromiseLike<CalendarAdminQueryResult<T>>;
 }
 
 function requestProblem(
@@ -361,71 +365,6 @@ function validateManualAppointment(
   };
 }
 
-function calendarDayOfWeek(date: string): number {
-  const [year, month, day] = date.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-}
-
-function timeToMinutes(time: string): number {
-  const match = /^(\d{2}):(\d{2}):(\d{2})$/.exec(time);
-  if (!match) {
-    throw new Error("Invalid persisted time");
-  }
-  return Number(match[1]) * 60 + Number(match[2]);
-}
-
-async function validateManualAppointmentAvailability(
-  appointment: ManualAppointmentInput,
-  deps: CalendarAdminDatabaseDependencies,
-): Promise<void> {
-  const workingHours = await deps.listWorkingHours();
-  const dayHours = workingHours.find(
-    (row) => row.day_of_week ===
-      calendarDayOfWeek(appointment.appointment_date),
-  );
-
-  if (
-    !dayHours?.is_open ||
-    dayHours.open_time === null ||
-    dayHours.close_time === null
-  ) {
-    throw requestProblem("Day closed", "DAY_CLOSED");
-  }
-
-  const openMinutes = timeToMinutes(dayHours.open_time);
-  const closeMinutes = timeToMinutes(dayHours.close_time);
-  if (closeMinutes <= openMinutes) {
-    throw requestProblem("Day closed", "DAY_CLOSED");
-  }
-
-  const slotStart = timeToMinutes(appointment.arrival_time);
-  const slotEnd = slotStart + 30;
-  if (slotStart < openMinutes || slotEnd > closeMinutes) {
-    throw requestProblem("Invalid slot", "INVALID_SLOT");
-  }
-
-  const [appointments, blockedTimes] = await Promise.all([
-    deps.listAppointments(appointment.appointment_date),
-    deps.listBlockedTimes(appointment.appointment_date),
-  ]);
-
-  const overlapsBlock = blockedTimes.some((blockedTime) => (
-    slotStart < timeToMinutes(blockedTime.end_time) &&
-    slotEnd > timeToMinutes(blockedTime.start_time)
-  ));
-  if (overlapsBlock) {
-    throw requestProblem("Invalid slot", "INVALID_SLOT");
-  }
-
-  const slotTaken = appointments.some((existingAppointment) => (
-    existingAppointment.status !== "odrzucone" &&
-    existingAppointment.arrival_time === appointment.arrival_time
-  ));
-  if (slotTaken) {
-    throw requestProblem("Slot taken", "SLOT_TAKEN", 409);
-  }
-}
-
 function validateAppointmentUpdate(
   value: unknown,
   todayWarsaw: string,
@@ -620,8 +559,16 @@ async function runAppointmentMutation<T>(
   try {
     return await operation();
   } catch (error) {
-    if (isRecord(error) && error.code === "23505") {
-      throw requestProblem("Slot taken", "SLOT_TAKEN", 409);
+    if (isRecord(error)) {
+      switch (error.code) {
+        case "DRK01":
+          throw requestProblem("Day closed", "DAY_CLOSED");
+        case "DRK02":
+          throw requestProblem("Invalid slot", "INVALID_SLOT");
+        case "DRK03":
+        case "23505":
+          throw requestProblem("Slot taken", "SLOT_TAKEN", 409);
+      }
     }
     throw error;
   }
@@ -682,7 +629,6 @@ export async function handleCalendarAdmin(
             await readBoundedJson(req),
             deps.todayWarsaw(),
           );
-          await validateManualAppointmentAvailability(appointment, deps);
           const row = await runAppointmentMutation(
             () => deps.createAppointment(appointment),
           );
@@ -818,30 +764,55 @@ export function createCalendarAdminDependencies(
     async createAppointment(
       appointment: ManualAppointmentInput,
     ): Promise<AdminAppointmentRow> {
-      const { data, error } = await client
-        .from<AdminAppointmentRow>("service_appointments")
-        .insert(appointment)
-        .select(APPOINTMENT_FIELDS)
-        .single<AdminAppointmentRow>();
+      const { data, error } = await client.rpc<AdminAppointmentRow[]>(
+        "create_admin_appointment",
+        {
+          p_appointment_date: appointment.appointment_date,
+          p_arrival_time: appointment.arrival_time,
+          p_customer_name: appointment.customer_name,
+          p_customer_phone: appointment.customer_phone,
+          p_customer_phone_normalized:
+            appointment.customer_phone_normalized,
+          p_bike_manufacturer: appointment.bike_manufacturer,
+          p_bike_model: appointment.bike_model,
+          p_service_note: appointment.service_note,
+          p_estimated_duration_minutes:
+            appointment.estimated_duration_minutes,
+        },
+      );
       throwOnDatabaseError(error);
-      if (!data) {
+      if (!data?.[0]) {
         throw new Error("Database operation failed");
       }
-      return data as AdminAppointmentRow;
+      return data[0];
     },
 
     async updateAppointment(
       id: string,
       update: AppointmentUpdate,
     ): Promise<AdminAppointmentRow | null> {
-      const { data, error } = await client
-        .from<AdminAppointmentRow>("service_appointments")
-        .update(update)
-        .eq("id", id)
-        .select(APPOINTMENT_FIELDS)
-        .maybeSingle<AdminAppointmentRow>();
+      const { data, error } = await client.rpc<AdminAppointmentRow[]>(
+        "update_admin_appointment",
+        {
+          p_id: id,
+          p_apply_status: Object.hasOwn(update, "status"),
+          p_status: update.status ?? null,
+          p_apply_appointment_date:
+            Object.hasOwn(update, "appointment_date"),
+          p_appointment_date: update.appointment_date ?? null,
+          p_apply_arrival_time: Object.hasOwn(update, "arrival_time"),
+          p_arrival_time: update.arrival_time ?? null,
+          p_apply_estimated_duration_minutes:
+            Object.hasOwn(update, "estimated_duration_minutes"),
+          p_estimated_duration_minutes:
+            update.estimated_duration_minutes ?? null,
+          p_apply_technician_note:
+            Object.hasOwn(update, "technician_note"),
+          p_technician_note: update.technician_note ?? null,
+        },
+      );
       throwOnDatabaseError(error);
-      return (data as AdminAppointmentRow | null) ?? null;
+      return data?.[0] ?? null;
     },
 
     async listBlockedTimes(date: string): Promise<BlockedTimeRow[]> {

@@ -140,6 +140,7 @@ export default function KalendarzAdmin() {
   const handleLogout = () => {
     setPassword('');
     setPasswordError(false);
+    createMutation.reset();
     logout();
   };
 
