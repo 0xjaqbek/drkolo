@@ -127,10 +127,14 @@ export default function Rezerwacja() {
         bike_model: model,
         service_note: note,
       });
-      sessionStorage.setItem(
-        `drkolo_booking_${result.id}`,
-        result.lookup_token,
-      );
+      try {
+        sessionStorage.setItem(
+          `drkolo_booking_${result.id}`,
+          result.lookup_token,
+        );
+      } catch {
+        // The inquiry already exists; unavailable browser storage must not retry it.
+      }
 
       const body = `Nowe zapytanie - Dr Koło\nData: ${format(date, 'dd.MM.yyyy')} o ${time}\nImię: ${name}\nRower: ${manufacturer} ${model}\nOpis: ${note}`;
       setSmsBody(body);

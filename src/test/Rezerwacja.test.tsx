@@ -164,6 +164,22 @@ describe('Rezerwacja', () => {
     expect(screen.queryByText('private-lookup-token')).not.toBeInTheDocument();
   });
 
+  it('keeps a successful inquiry successful when token storage fails', async () => {
+    const storageSpy = vi.spyOn(Storage.prototype, 'setItem')
+      .mockImplementation(() => {
+        throw new Error('Storage unavailable');
+      });
+    renderWithProviders(<Rezerwacja />);
+    await reachSummary();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Wyślij zapytanie' }));
+
+    expect(await screen.findByText('Zapytanie utworzone!')).toBeInTheDocument();
+    expect(apiMocks.createAppointmentInquiry).toHaveBeenCalledTimes(1);
+    expect(toastMocks.error).not.toHaveBeenCalled();
+    storageSpy.mockRestore();
+  });
+
   it('returns to slot selection and refetches after a slot conflict', async () => {
     apiMocks.createAppointmentInquiry.mockRejectedValueOnce(
       new ApiClientError(409, 'SLOT_TAKEN', 'Slot taken'),
