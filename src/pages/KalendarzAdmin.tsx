@@ -7,7 +7,8 @@ import { TimelinePicker } from '@/components/TimelinePicker';
 import { AppointmentCard } from '@/components/AppointmentCard';
 import { WorkingHoursEditor } from '@/components/WorkingHoursEditor';
 import { BlockedTimesEditor } from '@/components/BlockedTimesEditor';
-import { useSession } from '@/hooks/useSession';
+import { useCalendarAdminSession } from '@/hooks/useSession';
+import { ApiClientError } from '@/lib/calendarAdminApi';
 import { 
   useWorkingHours, 
   useAppointmentsByDate, 
@@ -26,7 +27,14 @@ import { toast } from 'sonner';
 
 export default function KalendarzAdmin() {
   useNoIndex();
-  const { authenticated, login, logout } = useSession();
+  const {
+    authenticated,
+    error: sessionError,
+    isLoading: sessionLoading,
+    isRestoring,
+    login,
+    logout,
+  } = useCalendarAdminSession();
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState(false);
 
@@ -47,18 +55,33 @@ export default function KalendarzAdmin() {
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
   const mDateStr = mDate ? format(mDate, 'yyyy-MM-dd') : '';
   
-  const { data: allWorkingHours } = useWorkingHours();
-  const { data: appointments = [] } = useAppointmentsByDate(selectedDateStr);
-  const { data: blockedTimes = [] } = useBlockedTimes(selectedDateStr);
+  const { data: allWorkingHours } = useWorkingHours(authenticated);
+  const { data: appointments = [] } = useAppointmentsByDate(
+    selectedDateStr,
+    authenticated,
+  );
+  const { data: blockedTimes = [] } = useBlockedTimes(
+    selectedDateStr,
+    authenticated,
+  );
   
-  const { data: mAppointments = [] } = useAppointmentsByDate(mDateStr);
-  const { data: mBlockedTimes = [] } = useBlockedTimes(mDateStr);
-  const { data: pendingAppointments = [] } = usePendingAppointments();
+  const { data: mAppointments = [] } = useAppointmentsByDate(
+    mDateStr,
+    authenticated,
+  );
+  const { data: mBlockedTimes = [] } = useBlockedTimes(
+    mDateStr,
+    authenticated,
+  );
+  const { data: pendingAppointments = [] } = usePendingAppointments(
+    authenticated,
+  );
   
   const createMutation = useCreateAppointment();
 
-  const handleLogin = () => {
-    if (!login(password)) {
+  const handleLogin = async () => {
+    setPasswordError(false);
+    if (!await login(password)) {
       setPasswordError(true);
     }
   };
@@ -72,16 +95,13 @@ export default function KalendarzAdmin() {
     try {
       await createMutation.mutateAsync({
         appointment_date: format(mDate, 'yyyy-MM-dd'),
-        arrival_time: `${mTime}:00`,
+        arrival_time: mTime,
         customer_name: mName,
         customer_phone: mPhone,
         bike_manufacturer: mManufacturer,
         bike_model: mModel,
         service_note: mNote || null,
-        status: 'potwierdzone', // manual is confirmed by default
-        source: 'manual',
         estimated_duration_minutes: parseInt(mDuration, 10),
-        technician_note: null,
       });
       
       toast.success('Dodano wizytę');
@@ -99,7 +119,20 @@ export default function KalendarzAdmin() {
     }
   };
 
+  if (isRestoring) {
+    return (
+      <div
+        role="status"
+        className="min-h-screen flex items-center justify-center p-4 text-muted-foreground"
+      >
+        Sprawdzanie sesji...
+      </div>
+    );
+  }
+
   if (!authenticated) {
+    const isWrongPassword = sessionError instanceof ApiClientError &&
+      sessionError.status === 401;
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-sm space-y-4">
@@ -112,10 +145,26 @@ export default function KalendarzAdmin() {
               setPassword(e.target.value);
               setPasswordError(false);
             }}
-            onKeyDown={e => e.key === 'Enter' && handleLogin()}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !sessionLoading) {
+                void handleLogin();
+              }
+            }}
           />
-          {passwordError && <p className="text-sm text-red-500">Nieprawidłowe hasło</p>}
-          <Button className="w-full" onClick={handleLogin}>Zaloguj</Button>
+          {passwordError && (
+            <p className="text-sm text-red-500">
+              {isWrongPassword
+                ? 'Nieprawidłowe hasło'
+                : 'Nie udało się zalogować. Spróbuj ponownie.'}
+            </p>
+          )}
+          <Button
+            className="w-full"
+            onClick={() => void handleLogin()}
+            disabled={sessionLoading}
+          >
+            {sessionLoading ? 'Sprawdzanie...' : 'Zaloguj'}
+          </Button>
         </div>
       </div>
     );
@@ -287,7 +336,7 @@ export default function KalendarzAdmin() {
                   <h2 className="text-xl font-semibold">Godziny otwarcia</h2>
                   <p className="text-sm text-muted-foreground">Ustal w jakich godzinach serwis przyjmuje zlecenia online.</p>
                 </div>
-                <WorkingHoursEditor />
+                <WorkingHoursEditor authenticated={authenticated} />
               </div>
 
               <div className="space-y-4">
@@ -295,7 +344,7 @@ export default function KalendarzAdmin() {
                   <h2 className="text-xl font-semibold">Zablokowane terminy</h2>
                   <p className="text-sm text-muted-foreground">Dodaj przerwy (np. obiadowe), urlopy lub wyjazdy. W tych godzinach kalendarz będzie niedostępny dla klientów.</p>
                 </div>
-                <BlockedTimesEditor />
+                <BlockedTimesEditor authenticated={authenticated} />
               </div>
             </div>
           </TabsContent>

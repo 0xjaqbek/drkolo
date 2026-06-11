@@ -10,8 +10,14 @@ import { toast } from 'sonner';
 
 const DAYS = ['Niedziela', 'Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota'];
 
-export function WorkingHoursEditor() {
-  const { data: workingHours, isLoading } = useWorkingHours();
+interface WorkingHoursEditorProps {
+  authenticated: boolean;
+}
+
+export function WorkingHoursEditor({
+  authenticated,
+}: WorkingHoursEditorProps) {
+  const { data: workingHours, isLoading } = useWorkingHours(authenticated);
   const updateMutation = useUpdateWorkingHours();
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -33,9 +39,9 @@ export function WorkingHoursEditor() {
     try {
       await updateMutation.mutateAsync({
         id,
-        open_time: editData.is_open ? `${editData.open_time}:00` : null,
-        close_time: editData.is_open ? `${editData.close_time}:00` : null,
-        is_open: editData.is_open,
+        open_time: editData.is_open ? editData.open_time ?? null : null,
+        close_time: editData.is_open ? editData.close_time ?? null : null,
+        is_open: Boolean(editData.is_open),
       });
       toast.success('Zapisano godziny otwarcia');
       setEditingId(null);

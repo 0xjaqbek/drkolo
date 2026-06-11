@@ -19,8 +19,6 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [duration, setDuration] = useState(appointment.estimated_duration_minutes?.toString() || '60');
   const [note, setNote] = useState(appointment.technician_note || '');
-  const [editDate, setEditDate] = useState(appointment.appointment_date);
-  const [editTime, setEditTime] = useState(appointment.arrival_time.substring(0, 5));
 
   const statusColors = {
     zapytanie: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
@@ -51,8 +49,6 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
       id: appointment.id,
       estimated_duration_minutes: parseInt(duration, 10) || null,
       technician_note: note,
-      appointment_date: editDate,
-      arrival_time: `${editTime}:00`,
       ...(appointment.status === 'zapytanie' ? { status: 'potwierdzone' } : {})
     });
     setIsEditing(false);
@@ -113,26 +109,6 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
           <div className="space-y-3 pt-2 border-t">
             {isEditing ? (
               <>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Data</Label>
-                    <Input 
-                      type="date" 
-                      value={editDate} 
-                      onChange={e => setEditDate(e.target.value)}
-                      className="h-8"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Godzina</Label>
-                    <Input 
-                      type="time" 
-                      value={editTime} 
-                      onChange={e => setEditTime(e.target.value)}
-                      className="h-8"
-                    />
-                  </div>
-                </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Szacowany czas (minuty)</Label>
                   <Input 
