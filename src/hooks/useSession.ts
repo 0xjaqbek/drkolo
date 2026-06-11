@@ -1,12 +1,27 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { verifyCalendarPassword } from '@/lib/calendarAdminApi';
+import { ApiClientError } from '@/lib/types';
 
 const SESSION_KEY = 'zlecenie_session';
 export const CALENDAR_ADMIN_SESSION_KEY = 'calendar_admin_session';
+const CALENDAR_ADMIN_SESSION_EXPIRED = 'calendar-admin-session-expired';
 
 export function getCalendarAdminPassword(): string | null {
   return sessionStorage.getItem(CALENDAR_ADMIN_SESSION_KEY);
+}
+
+export function expireCalendarAdminSession(): void {
+  sessionStorage.removeItem(CALENDAR_ADMIN_SESSION_KEY);
+  window.dispatchEvent(new Event(CALENDAR_ADMIN_SESSION_EXPIRED));
+}
+
+function calendarSessionExpiredError(): ApiClientError {
+  return new ApiClientError(
+    401,
+    'SESSION_EXPIRED',
+    'Calendar admin session expired',
+  );
 }
 
 export function useSession() {
@@ -40,12 +55,29 @@ export function useCalendarAdminSession() {
   const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
+    let active = true;
+    const handleSessionExpired = () => {
+      if (!active) return;
+      setAuthenticated(false);
+      setError(calendarSessionExpiredError());
+      queryClient.removeQueries({ queryKey: ['calendar-admin'] });
+    };
+    window.addEventListener(
+      CALENDAR_ADMIN_SESSION_EXPIRED,
+      handleSessionExpired,
+    );
+
     const storedPassword = getCalendarAdminPassword();
     if (!storedPassword) {
-      return;
+      return () => {
+        active = false;
+        window.removeEventListener(
+          CALENDAR_ADMIN_SESSION_EXPIRED,
+          handleSessionExpired,
+        );
+      };
     }
 
-    let active = true;
     verifyCalendarPassword(storedPassword)
       .then((verified) => {
         if (!active) return;
@@ -54,11 +86,16 @@ export function useCalendarAdminSession() {
           return;
         }
         sessionStorage.removeItem(CALENDAR_ADMIN_SESSION_KEY);
+        setError(calendarSessionExpiredError());
       })
       .catch((verifyError: unknown) => {
         if (!active) return;
         sessionStorage.removeItem(CALENDAR_ADMIN_SESSION_KEY);
-        setError(verifyError);
+        setError(
+          verifyError instanceof ApiClientError && verifyError.status === 401
+            ? calendarSessionExpiredError()
+            : verifyError,
+        );
       })
       .finally(() => {
         if (active) {
@@ -69,8 +106,12 @@ export function useCalendarAdminSession() {
 
     return () => {
       active = false;
+      window.removeEventListener(
+        CALENDAR_ADMIN_SESSION_EXPIRED,
+        handleSessionExpired,
+      );
     };
-  }, []);
+  }, [queryClient]);
 
   const login = async (password: string): Promise<boolean> => {
     setIsLoading(true);

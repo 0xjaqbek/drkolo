@@ -121,6 +121,25 @@ describe('useCalendarAdminSession', () => {
     expect(result.current.isLoading).toBe(false);
   });
 
+  it('marks a stored calendar password rejected with 401 as expired', async () => {
+    sessionStorage.setItem(CALENDAR_SESSION_KEY, 'expired-secret');
+    apiMocks.verifyCalendarPassword.mockRejectedValue(
+      new ApiClientError(401, 'UNAUTHORIZED', 'Unauthorized'),
+    );
+    const { result } = renderCalendarSession();
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.authenticated).toBe(false);
+    expect(result.current.error).toEqual(expect.objectContaining({
+      status: 401,
+      code: 'SESSION_EXPIRED',
+    }));
+    expect(sessionStorage.getItem(CALENDAR_SESSION_KEY)).toBeNull();
+  });
+
   it('clears calendar caches and leaves the legacy session untouched on logout', async () => {
     sessionStorage.setItem(SESSION_KEY, 'secret123');
     apiMocks.verifyCalendarPassword.mockResolvedValue(true);
@@ -138,6 +157,28 @@ describe('useCalendarAdminSession', () => {
     expect(result.current.authenticated).toBe(false);
     expect(sessionStorage.getItem(CALENDAR_SESSION_KEY)).toBeNull();
     expect(sessionStorage.getItem(SESSION_KEY)).toBe('secret123');
+    expect(
+      queryClient.getQueriesData({ queryKey: ['calendar-admin'] }),
+    ).toEqual([]);
+  });
+
+  it('expires the calendar session and clears caches after a protected 401', async () => {
+    apiMocks.verifyCalendarPassword.mockResolvedValue(true);
+    const queryClient = new QueryClient();
+    const { result } = renderCalendarSession(queryClient);
+    await act(async () => {
+      await result.current.login('server-secret');
+    });
+    queryClient.setQueryData(['calendar-admin', 'appointments'], []);
+
+    act(() => sessionHooks.expireCalendarAdminSession());
+
+    expect(result.current.authenticated).toBe(false);
+    expect(result.current.error).toEqual(expect.objectContaining({
+      status: 401,
+      code: 'SESSION_EXPIRED',
+    }));
+    expect(sessionStorage.getItem(CALENDAR_SESSION_KEY)).toBeNull();
     expect(
       queryClient.getQueriesData({ queryKey: ['calendar-admin'] }),
     ).toEqual([]);

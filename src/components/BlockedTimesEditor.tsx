@@ -18,7 +18,12 @@ export function BlockedTimesEditor({
   const [startTime, setStartTime] = useState('12:00');
   const [endTime, setEndTime] = useState('13:00');
   const [reason, setReason] = useState('');
-  const { data: blockedTimes, isLoading } = useBlockedTimes(
+  const {
+    data: blockedTimes,
+    error,
+    isLoading,
+    refetch,
+  } = useBlockedTimes(
     date,
     authenticated,
   );
@@ -95,7 +100,24 @@ export function BlockedTimesEditor({
       <div className="space-y-3">
         <h3 className="font-medium">Istniejące blokady</h3>
         {isLoading ? (
-          <div className="text-sm text-muted-foreground">Ładowanie...</div>
+          <div role="status" className="text-sm text-muted-foreground">
+            Ładowanie zablokowanych terminów...
+          </div>
+        ) : error || !blockedTimes ? (
+          <div
+            role="alert"
+            className="p-4 text-center text-sm text-destructive border border-destructive/20 rounded-lg space-y-3"
+          >
+            <p>Nie udało się pobrać zablokowanych terminów.</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void refetch()}
+            >
+              Spróbuj ponownie
+            </Button>
+          </div>
         ) : blockedTimes?.length === 0 ? (
           <div className="text-sm text-muted-foreground p-4 border border-dashed rounded-lg text-center">
             Brak zablokowanych terminów.

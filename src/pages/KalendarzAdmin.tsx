@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNoIndex } from "@/hooks/useNoIndex";
-import { format, isBefore, startOfDay } from 'date-fns';
+import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { SiteHeader } from '@/components/SiteHeader';
 import { TimelinePicker } from '@/components/TimelinePicker';
 import { AppointmentCard } from '@/components/AppointmentCard';
 import { WorkingHoursEditor } from '@/components/WorkingHoursEditor';
@@ -37,6 +36,15 @@ export default function KalendarzAdmin() {
   } = useCalendarAdminSession();
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState(false);
+  const sessionExpired = sessionError instanceof ApiClientError &&
+    sessionError.code === 'SESSION_EXPIRED';
+
+  useEffect(() => {
+    if (sessionExpired) {
+      setPassword('');
+      setPasswordError(false);
+    }
+  }, [sessionExpired]);
 
   // Main view state
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -55,38 +63,84 @@ export default function KalendarzAdmin() {
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
   const mDateStr = mDate ? format(mDate, 'yyyy-MM-dd') : '';
   
-  const { data: allWorkingHours } = useWorkingHours(authenticated);
-  const { data: appointments = [] } = useAppointmentsByDate(
+  const workingHoursQuery = useWorkingHours(authenticated);
+  const appointmentsQuery = useAppointmentsByDate(
     selectedDateStr,
     authenticated,
   );
-  const { data: blockedTimes = [] } = useBlockedTimes(
+  const blockedTimesQuery = useBlockedTimes(
     selectedDateStr,
     authenticated,
   );
   
-  const { data: mAppointments = [] } = useAppointmentsByDate(
+  const manualAppointmentsQuery = useAppointmentsByDate(
     mDateStr,
     authenticated,
   );
-  const { data: mBlockedTimes = [] } = useBlockedTimes(
+  const manualBlockedTimesQuery = useBlockedTimes(
     mDateStr,
     authenticated,
   );
-  const { data: pendingAppointments = [] } = usePendingAppointments(
+  const pendingAppointmentsQuery = usePendingAppointments(
     authenticated,
   );
+
+  const allWorkingHours = workingHoursQuery.data;
+  const appointments = appointmentsQuery.data;
+  const blockedTimes = blockedTimesQuery.data;
+  const mAppointments = manualAppointmentsQuery.data;
+  const mBlockedTimes = manualBlockedTimesQuery.data;
+  const pendingAppointments = pendingAppointmentsQuery.data;
+
+  const dayQueriesLoading = workingHoursQuery.isLoading ||
+    appointmentsQuery.isLoading ||
+    blockedTimesQuery.isLoading;
+  const dayQueriesError = workingHoursQuery.error ??
+    appointmentsQuery.error ??
+    blockedTimesQuery.error;
+  const dayQueriesReady = workingHoursQuery.isSuccess &&
+    appointmentsQuery.isSuccess &&
+    blockedTimesQuery.isSuccess;
+
+  const manualQueriesLoading = workingHoursQuery.isLoading ||
+    manualAppointmentsQuery.isLoading ||
+    manualBlockedTimesQuery.isLoading;
+  const manualQueriesError = workingHoursQuery.error ??
+    manualAppointmentsQuery.error ??
+    manualBlockedTimesQuery.error;
+  const manualQueriesReady = workingHoursQuery.isSuccess &&
+    manualAppointmentsQuery.isSuccess &&
+    manualBlockedTimesQuery.isSuccess;
   
   const createMutation = useCreateAppointment();
 
   const handleLogin = async () => {
     setPasswordError(false);
+    if (!password) {
+      setPasswordError(true);
+      return;
+    }
     if (!await login(password)) {
       setPasswordError(true);
     }
   };
 
+  const handleLogout = () => {
+    setPassword('');
+    setPasswordError(false);
+    logout();
+  };
+
+  const handleManualDateSelect = (date: Date | undefined) => {
+    setMTime(null);
+    setMDate(date);
+  };
+
   const handleCreateManual = async () => {
+    if (!manualQueriesReady) {
+      toast.error('Poczekaj na załadowanie dostępnych terminów');
+      return;
+    }
     if (!mDate || !mTime || !mName || !mPhone || !mManufacturer || !mModel) {
       toast.error('Wypełnij wszystkie wymagane pola');
       return;
@@ -132,7 +186,8 @@ export default function KalendarzAdmin() {
 
   if (!authenticated) {
     const isWrongPassword = sessionError instanceof ApiClientError &&
-      sessionError.status === 401;
+      sessionError.status === 401 &&
+      sessionError.code !== 'SESSION_EXPIRED';
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-sm space-y-4">
@@ -151,7 +206,12 @@ export default function KalendarzAdmin() {
               }
             }}
           />
-          {passwordError && (
+          {sessionExpired && (
+            <p role="alert" className="text-sm text-red-500">
+              Sesja wygasła. Zaloguj się ponownie.
+            </p>
+          )}
+          {passwordError && !sessionExpired && (
             <p className="text-sm text-red-500">
               {isWrongPassword
                 ? 'Nieprawidłowe hasło'
@@ -161,7 +221,7 @@ export default function KalendarzAdmin() {
           <Button
             className="w-full"
             onClick={() => void handleLogin()}
-            disabled={sessionLoading}
+            disabled={sessionLoading || !password}
           >
             {sessionLoading ? 'Sprawdzanie...' : 'Zaloguj'}
           </Button>
@@ -180,7 +240,7 @@ export default function KalendarzAdmin() {
           <div className="flex items-center gap-2 font-display font-bold text-lg">
             <CalendarIcon className="w-5 h-5 text-accent" /> Kalendarz Serwisu
           </div>
-          <Button variant="ghost" size="sm" onClick={logout}>
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
             <LogOut className="w-4 h-4 mr-2" /> Wyloguj
           </Button>
         </div>
@@ -195,8 +255,24 @@ export default function KalendarzAdmin() {
           </TabsList>
           
           <TabsContent value="calendar" className="space-y-6">
-            
-            {pendingAppointments.length > 0 && (
+
+            {pendingAppointmentsQuery.isLoading && (
+              <QueryNotice
+                kind="loading"
+                message="Ładowanie oczekujących zapytań..."
+              />
+            )}
+            {pendingAppointmentsQuery.error && (
+              <QueryNotice
+                kind="error"
+                label="Błąd oczekujących zapytań"
+                message="Nie udało się pobrać oczekujących zapytań."
+                onRetry={() => void pendingAppointmentsQuery.refetch()}
+              />
+            )}
+            {pendingAppointmentsQuery.isSuccess &&
+              pendingAppointments &&
+              pendingAppointments.length > 0 && (
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 shadow-sm mb-6">
                 <h3 className="font-semibold text-lg text-yellow-700 flex items-center gap-2 mb-4">
                   Oczekujące zapytania ({pendingAppointments.length})
@@ -226,8 +302,10 @@ export default function KalendarzAdmin() {
                   <TimelinePicker 
                     date={selectedDate}
                     workingHours={workingHoursForSelected}
-                    appointments={appointments}
-                    blockedTimes={blockedTimes}
+                    appointments={appointments ?? []}
+                    blockedTimes={blockedTimes ?? []}
+                    isLoading={dayQueriesLoading}
+                    error={dayQueriesError}
                     selectedTime={null}
                     onSelectTime={() => {}}
                     className="opacity-80 pointer-events-none"
@@ -237,20 +315,38 @@ export default function KalendarzAdmin() {
                 <div className="space-y-4">
                   <h3 className="font-semibold text-lg flex items-center justify-between">
                     Lista wizyt
-                    <Badge count={appointments.length} />
+                    <Badge count={dayQueriesReady ? appointments?.length ?? 0 : 0} />
                   </h3>
-                  
-                  {appointments.length === 0 ? (
+
+                  {dayQueriesLoading ? (
+                    <QueryNotice
+                      kind="loading"
+                      message="Ładowanie wizyt dla wybranego dnia..."
+                    />
+                  ) : dayQueriesError ? (
+                    <QueryNotice
+                      kind="error"
+                      label="Błąd danych wybranego dnia"
+                      message="Nie udało się pobrać danych wybranego dnia."
+                      onRetry={() => {
+                        void Promise.all([
+                          workingHoursQuery.refetch(),
+                          appointmentsQuery.refetch(),
+                          blockedTimesQuery.refetch(),
+                        ]);
+                      }}
+                    />
+                  ) : dayQueriesReady && appointments?.length === 0 ? (
                     <div className="text-center p-8 bg-card border border-dashed rounded-lg text-muted-foreground">
                       Brak wizyt w tym dniu.
                     </div>
-                  ) : (
+                  ) : dayQueriesReady && appointments ? (
                     <div className="grid gap-4">
                       {appointments.map(app => (
                         <AppointmentCard key={app.id} appointment={app} />
                       ))}
                     </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -299,7 +395,7 @@ export default function KalendarzAdmin() {
                     <Calendar
                       mode="single"
                       selected={mDate}
-                      onSelect={setMDate}
+                      onSelect={handleManualDateSelect}
                       locale={pl}
                       className="rounded-md border bg-background"
                     />
@@ -311,18 +407,49 @@ export default function KalendarzAdmin() {
                       <TimelinePicker
                         date={mDate}
                         workingHours={workingHoursForM}
-                        appointments={mAppointments}
-                        blockedTimes={mBlockedTimes}
+                        appointments={mAppointments ?? []}
+                        blockedTimes={mBlockedTimes ?? []}
+                        isLoading={manualQueriesLoading ||
+                          (!manualQueriesReady && !manualQueriesError)}
+                        error={manualQueriesError}
                         selectedTime={mTime}
                         onSelectTime={setMTime}
                       />
+                      {manualQueriesError && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            void Promise.all([
+                              workingHoursQuery.refetch(),
+                              manualAppointmentsQuery.refetch(),
+                              manualBlockedTimesQuery.refetch(),
+                            ]);
+                          }}
+                        >
+                          Spróbuj ponownie
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
 
               <div className="mt-8 pt-6 border-t flex justify-end">
-                <Button size="lg" onClick={handleCreateManual} disabled={createMutation.isPending}>
+                <Button
+                  size="lg"
+                  onClick={() => void handleCreateManual()}
+                  disabled={
+                    createMutation.isPending ||
+                    !manualQueriesReady ||
+                    !mTime ||
+                    !mName ||
+                    !mPhone ||
+                    !mManufacturer ||
+                    !mModel
+                  }
+                >
                   {createMutation.isPending ? 'Dodawanie...' : 'Zapisz i zablokuj termin'}
                 </Button>
               </div>
@@ -360,5 +487,36 @@ function Badge({ count }: { count: number }) {
     <span className="bg-accent text-accent-foreground text-xs font-bold px-2 py-0.5 rounded-full">
       {count}
     </span>
+  );
+}
+
+function QueryNotice({
+  kind,
+  label,
+  message,
+  onRetry,
+}: {
+  kind: 'loading' | 'error';
+  label?: string;
+  message: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <div
+      role={kind === 'loading' ? 'status' : 'alert'}
+      aria-label={label}
+      className={
+        kind === 'loading'
+          ? 'p-4 text-center text-sm text-muted-foreground'
+          : 'p-4 text-center text-sm text-destructive border border-destructive/20 rounded-lg bg-destructive/5 space-y-3'
+      }
+    >
+      <p>{message}</p>
+      {onRetry && (
+        <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+          Spróbuj ponownie
+        </Button>
+      )}
+    </div>
   );
 }

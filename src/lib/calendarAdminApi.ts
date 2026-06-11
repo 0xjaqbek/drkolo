@@ -150,6 +150,12 @@ export function updateAppointment(
   if (update.status !== undefined) {
     payload.status = update.status;
   }
+  if (update.appointment_date !== undefined) {
+    payload.appointment_date = update.appointment_date;
+  }
+  if (update.arrival_time !== undefined) {
+    payload.arrival_time = update.arrival_time;
+  }
   if (update.estimated_duration_minutes !== undefined) {
     payload.estimated_duration_minutes = update.estimated_duration_minutes;
   }

@@ -10,13 +10,17 @@ import {
   updateAppointment,
   updateWorkingHours,
 } from '@/lib/calendarAdminApi';
+import { ApiClientError } from '@/lib/types';
 import type {
   AppointmentUpdate,
   BlockedTimeInput,
   ManualAppointmentInput,
   WorkingHoursUpdate,
 } from '@/lib/types';
-import { getCalendarAdminPassword } from '@/hooks/useSession';
+import {
+  expireCalendarAdminSession,
+  getCalendarAdminPassword,
+} from '@/hooks/useSession';
 
 const CALENDAR_QUERY_KEY = ['calendar-admin'] as const;
 const APPOINTMENTS_QUERY_KEY = [...CALENDAR_QUERY_KEY, 'appointments'] as const;
@@ -31,10 +35,25 @@ function requireCalendarPassword(): string {
   return password;
 }
 
+async function runProtectedRequest<T>(
+  request: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await request();
+  } catch (error) {
+    if (error instanceof ApiClientError && error.status === 401) {
+      expireCalendarAdminSession();
+    }
+    throw error;
+  }
+}
+
 export function useWorkingHours(authenticated = false) {
   return useQuery({
     queryKey: WORKING_HOURS_QUERY_KEY,
-    queryFn: () => getWorkingHours(requireCalendarPassword()),
+    queryFn: () => runProtectedRequest(
+      () => getWorkingHours(requireCalendarPassword()),
+    ),
     enabled: authenticated,
   });
 }
@@ -46,7 +65,9 @@ export function useUpdateWorkingHours() {
       id,
       ...update
     }: WorkingHoursUpdate & { id: string }) => (
-      updateWorkingHours(id, update, requireCalendarPassword())
+      runProtectedRequest(
+        () => updateWorkingHours(id, update, requireCalendarPassword()),
+      )
     ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: WORKING_HOURS_QUERY_KEY });
@@ -57,7 +78,9 @@ export function useUpdateWorkingHours() {
 export function useBlockedTimes(date: string, authenticated = false) {
   return useQuery({
     queryKey: [...BLOCKED_TIMES_QUERY_KEY, date],
-    queryFn: () => getBlockedTimes(date, requireCalendarPassword()),
+    queryFn: () => runProtectedRequest(
+      () => getBlockedTimes(date, requireCalendarPassword()),
+    ),
     enabled: authenticated && Boolean(date),
   });
 }
@@ -66,7 +89,9 @@ export function useCreateBlockedTime() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (block: BlockedTimeInput) => (
-      createBlockedTime(block, requireCalendarPassword())
+      runProtectedRequest(
+        () => createBlockedTime(block, requireCalendarPassword()),
+      )
     ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BLOCKED_TIMES_QUERY_KEY });
@@ -78,7 +103,9 @@ export function useDeleteBlockedTime() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => (
-      deleteBlockedTime(id, requireCalendarPassword())
+      runProtectedRequest(
+        () => deleteBlockedTime(id, requireCalendarPassword()),
+      )
     ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BLOCKED_TIMES_QUERY_KEY });
@@ -92,7 +119,9 @@ export function useAppointmentsByDate(
 ) {
   return useQuery({
     queryKey: [...APPOINTMENTS_QUERY_KEY, 'date', date],
-    queryFn: () => getAppointmentsByDate(date, requireCalendarPassword()),
+    queryFn: () => runProtectedRequest(
+      () => getAppointmentsByDate(date, requireCalendarPassword()),
+    ),
     enabled: authenticated && Boolean(date),
   });
 }
@@ -100,7 +129,9 @@ export function useAppointmentsByDate(
 export function usePendingAppointments(authenticated = false) {
   return useQuery({
     queryKey: [...APPOINTMENTS_QUERY_KEY, 'pending'],
-    queryFn: () => getPendingAppointments(requireCalendarPassword()),
+    queryFn: () => runProtectedRequest(
+      () => getPendingAppointments(requireCalendarPassword()),
+    ),
     enabled: authenticated,
   });
 }
@@ -109,7 +140,12 @@ export function useCreateAppointment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (appointment: ManualAppointmentInput) => (
-      createManualAppointment(appointment, requireCalendarPassword())
+      runProtectedRequest(
+        () => createManualAppointment(
+          appointment,
+          requireCalendarPassword(),
+        ),
+      )
     ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: APPOINTMENTS_QUERY_KEY });
@@ -124,7 +160,9 @@ export function useUpdateAppointment() {
       id,
       ...update
     }: AppointmentUpdate & { id: string }) => (
-      updateAppointment(id, update, requireCalendarPassword())
+      runProtectedRequest(
+        () => updateAppointment(id, update, requireCalendarPassword()),
+      )
     ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: APPOINTMENTS_QUERY_KEY });

@@ -135,6 +135,8 @@ export interface ManualAppointmentInput {
 
 export interface AppointmentUpdate {
   status?: AppointmentStatus;
+  appointment_date?: string;
+  arrival_time?: string;
   estimated_duration_minutes?: number | null;
   technician_note?: string | null;
 }

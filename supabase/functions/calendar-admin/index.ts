@@ -89,6 +89,8 @@ export interface ManualAppointmentInput {
 
 export interface AppointmentUpdate {
   status?: string;
+  appointment_date?: string;
+  arrival_time?: string;
   estimated_duration_minutes?: number | null;
   technician_note?: string | null;
 }
@@ -123,6 +125,7 @@ export interface CalendarAdminDatabaseDependencies {
 export interface CalendarAdminDependencies
   extends CalendarAdminDatabaseDependencies {
   adminPassword: string | undefined;
+  todayWarsaw(): string;
 }
 
 type CalendarAdminTable =
@@ -274,6 +277,14 @@ function validateDuration(
   return value;
 }
 
+function validateNonPastDate(value: unknown, todayWarsaw: string): string {
+  const date = validateCalendarDate(value);
+  if (date < validateCalendarDate(todayWarsaw)) {
+    throw requestProblem("Date is in the past", "DATE_PAST");
+  }
+  return date;
+}
+
 function validateWorkingHoursUpdate(value: unknown): WorkingHoursUpdate {
   if (!isRecord(value)) {
     throw requestProblem("Invalid fields", "INVALID_FIELDS");
@@ -308,7 +319,10 @@ function validateWorkingHoursUpdate(value: unknown): WorkingHoursUpdate {
   };
 }
 
-function validateManualAppointment(value: unknown): ManualAppointmentInput {
+function validateManualAppointment(
+  value: unknown,
+  todayWarsaw: string,
+): ManualAppointmentInput {
   if (!isRecord(value)) {
     throw requestProblem("Invalid fields", "INVALID_FIELDS");
   }
@@ -326,7 +340,10 @@ function validateManualAppointment(value: unknown): ManualAppointmentInput {
   const customerPhone = requiredString(value, "customer_phone", 40);
 
   return {
-    appointment_date: validateCalendarDate(value.appointment_date),
+    appointment_date: validateNonPastDate(
+      value.appointment_date,
+      todayWarsaw,
+    ),
     arrival_time: normalizeTime(value.arrival_time, true),
     customer_name: requiredString(value, "customer_name", 120),
     customer_phone: customerPhone,
@@ -344,13 +361,22 @@ function validateManualAppointment(value: unknown): ManualAppointmentInput {
   };
 }
 
-function validateAppointmentUpdate(value: unknown): AppointmentUpdate {
+function validateAppointmentUpdate(
+  value: unknown,
+  todayWarsaw: string,
+): AppointmentUpdate {
   if (!isRecord(value)) {
     throw requestProblem("Invalid fields", "INVALID_FIELDS");
   }
   assertAllowedFields(
     value,
-    ["status", "estimated_duration_minutes", "technician_note"],
+    [
+      "status",
+      "appointment_date",
+      "arrival_time",
+      "estimated_duration_minutes",
+      "technician_note",
+    ],
     true,
   );
 
@@ -363,6 +389,15 @@ function validateAppointmentUpdate(value: unknown): AppointmentUpdate {
       throw requestProblem("Invalid status", "INVALID_STATUS");
     }
     update.status = value.status;
+  }
+  if (Object.hasOwn(value, "appointment_date")) {
+    update.appointment_date = validateNonPastDate(
+      value.appointment_date,
+      todayWarsaw,
+    );
+  }
+  if (Object.hasOwn(value, "arrival_time")) {
+    update.arrival_time = normalizeTime(value.arrival_time, true);
   }
   if (Object.hasOwn(value, "estimated_duration_minutes")) {
     update.estimated_duration_minutes = validateDuration(
@@ -580,6 +615,7 @@ export async function handleCalendarAdmin(
         if (req.method === "POST") {
           const appointment = validateManualAppointment(
             await readBoundedJson(req),
+            deps.todayWarsaw(),
           );
           const row = await runAppointmentMutation(
             () => deps.createAppointment(appointment),
@@ -590,6 +626,7 @@ export async function handleCalendarAdmin(
           const id = validateUuid(url.searchParams.get("id"));
           const update = validateAppointmentUpdate(
             await readBoundedJson(req),
+            deps.todayWarsaw(),
           );
           const row = await runAppointmentMutation(
             () => deps.updateAppointment(id, update),
@@ -645,6 +682,22 @@ function throwOnDatabaseError(error: unknown): void {
   if (error) {
     throw error;
   }
+}
+
+function getWarsawDate(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: "Europe/Warsaw",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const values = Object.fromEntries(
+    parts
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  );
+
+  return `${values.year}-${values.month}-${values.day}`;
 }
 
 export function createCalendarAdminDependencies(
@@ -773,6 +826,7 @@ if (typeof Deno !== "undefined" && typeof Deno.serve === "function") {
   );
   const dependencies: CalendarAdminDependencies = {
     adminPassword: Deno.env.get("ADMIN_PASSWORD"),
+    todayWarsaw: () => getWarsawDate(),
     ...createCalendarAdminDependencies(
       client as unknown as CalendarAdminClient,
     ),

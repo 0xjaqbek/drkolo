@@ -134,6 +134,8 @@ describe('calendarAdminApi', () => {
   it('patches an appointment with an encoded id', async () => {
     const update = {
       status: 'potwierdzone' as const,
+      appointment_date: '2026-06-12',
+      arrival_time: '11:00',
       estimated_duration_minutes: 90,
       technician_note: 'Ready tomorrow',
       password: 'must-not-leak',
@@ -146,6 +148,8 @@ describe('calendarAdminApi', () => {
 
     expectRequest('appointments&id=appointment%2Fid', 'PATCH', {
       status: 'potwierdzone',
+      appointment_date: '2026-06-12',
+      arrival_time: '11:00',
       estimated_duration_minutes: 90,
       technician_note: 'Ready tomorrow',
     });

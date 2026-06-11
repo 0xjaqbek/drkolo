@@ -939,6 +939,7 @@ function calendarDependencies(
 ): CalendarAdminDependencies {
   return {
     adminPassword: calendarAdminPassword,
+    todayWarsaw: vi.fn().mockReturnValue("2026-06-10"),
     listWorkingHours: vi.fn().mockResolvedValue([workingHoursRow]),
     updateWorkingHours: vi.fn().mockResolvedValue(workingHoursRow),
     listAppointments: vi.fn().mockResolvedValue([adminAppointmentRow]),
@@ -951,7 +952,7 @@ function calendarDependencies(
     createBlockedTime: vi.fn().mockResolvedValue(blockedTimeRow),
     deleteBlockedTime: vi.fn().mockResolvedValue(true),
     ...overrides,
-  };
+  } as CalendarAdminDependencies;
 }
 
 function calendarRequest(
@@ -1206,6 +1207,8 @@ describe("calendar admin route mapping", () => {
     const updatedRow = {
       ...adminAppointmentRow,
       status: "potwierdzone",
+      appointment_date: "2026-06-12",
+      arrival_time: "11:00:00",
       estimated_duration_minutes: 90,
       technician_note: "Ready tomorrow",
     };
@@ -1216,6 +1219,8 @@ describe("calendar admin route mapping", () => {
         "PATCH",
         {
           status: "potwierdzone",
+          appointment_date: "2026-06-12",
+          arrival_time: "11:00",
           estimated_duration_minutes: 90,
           technician_note: " Ready tomorrow ",
         },
@@ -1225,6 +1230,8 @@ describe("calendar admin route mapping", () => {
 
     expect(updateAppointment).toHaveBeenCalledWith(calendarRowId, {
       status: "potwierdzone",
+      appointment_date: "2026-06-12",
+      arrival_time: "11:00:00",
       estimated_duration_minutes: 90,
       technician_note: "Ready tomorrow",
     });
@@ -1447,7 +1454,10 @@ describe("calendar admin validation and errors", () => {
     [{ estimated_duration_minutes: 0 }, "INVALID_DURATION"],
     [{ estimated_duration_minutes: 1.5 }, "INVALID_DURATION"],
     [{ estimated_duration_minutes: 1441 }, "INVALID_DURATION"],
-    [{ appointment_date: "2026-06-12" }, "INVALID_FIELDS"],
+    [{ appointment_date: "2026-02-30" }, "INVALID_DATE"],
+    [{ appointment_date: "2026-06-09" }, "DATE_PAST"],
+    [{ arrival_time: "10:15" }, "INVALID_TIME"],
+    [{ arrival_time: "10:30:01" }, "INVALID_TIME"],
     [{}, "INVALID_FIELDS"],
   ])("rejects invalid appointment patches", async (body, code) => {
     const deps = calendarDependencies();
@@ -1478,6 +1488,19 @@ describe("calendar admin validation and errors", () => {
         estimated_duration_minutes: 60,
       },
       "INVALID_DATE",
+    ],
+    [
+      {
+        appointment_date: "2026-06-09",
+        arrival_time: "10:30",
+        customer_name: "Jan",
+        customer_phone: "+48600123456",
+        bike_manufacturer: "Trek",
+        bike_model: "Fuel EX",
+        service_note: null,
+        estimated_duration_minutes: 60,
+      },
+      "DATE_PAST",
     ],
     [
       {
@@ -1708,7 +1731,11 @@ describe("calendar admin validation and errors", () => {
         : calendarJsonRequest(
           `appointments&id=${calendarRowId}`,
           "PATCH",
-          { status: "potwierdzone" },
+          {
+            status: "potwierdzone",
+            appointment_date: "2026-06-11",
+            arrival_time: "10:30",
+          },
         );
       const response = await handleCalendarAdmin(request, deps);
 

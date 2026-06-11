@@ -4,7 +4,11 @@ import { format } from 'date-fns';
 import { AppointmentCard } from '@/components/AppointmentCard';
 import { BlockedTimesEditor } from '@/components/BlockedTimesEditor';
 import { WorkingHoursEditor } from '@/components/WorkingHoursEditor';
-import type { ServiceAppointment, WorkingHours } from '@/lib/types';
+import {
+  ApiClientError,
+  type ServiceAppointment,
+  type WorkingHours,
+} from '@/lib/types';
 
 const hookMocks = vi.hoisted(() => ({
   createBlockedTime: vi.fn(),
@@ -12,7 +16,13 @@ const hookMocks = vi.hoisted(() => ({
   updateAppointment: vi.fn(),
   updateWorkingHours: vi.fn(),
   useBlockedTimes: vi.fn(),
+  useUpdateAppointment: vi.fn(),
   useWorkingHours: vi.fn(),
+}));
+
+const toastMocks = vi.hoisted(() => ({
+  error: vi.fn(),
+  success: vi.fn(),
 }));
 
 vi.mock('@/hooks/useAppointments', () => ({
@@ -25,10 +35,7 @@ vi.mock('@/hooks/useAppointments', () => ({
     isPending: false,
     mutateAsync: hookMocks.deleteBlockedTime,
   }),
-  useUpdateAppointment: () => ({
-    isPending: false,
-    mutate: hookMocks.updateAppointment,
-  }),
+  useUpdateAppointment: hookMocks.useUpdateAppointment,
   useUpdateWorkingHours: () => ({
     isPending: false,
     mutateAsync: hookMocks.updateWorkingHours,
@@ -36,17 +43,31 @@ vi.mock('@/hooks/useAppointments', () => ({
   useWorkingHours: hookMocks.useWorkingHours,
 }));
 
+vi.mock('sonner', () => ({
+  toast: toastMocks,
+}));
+
 beforeEach(() => {
   Object.values(hookMocks).forEach((mock) => mock.mockReset());
+  Object.values(toastMocks).forEach((mock) => mock.mockReset());
   hookMocks.createBlockedTime.mockResolvedValue({});
+  hookMocks.updateAppointment.mockResolvedValue({});
   hookMocks.updateWorkingHours.mockResolvedValue({});
   hookMocks.useBlockedTimes.mockReturnValue({
     data: [],
     isLoading: false,
+    error: null,
+    refetch: vi.fn(),
   });
   hookMocks.useWorkingHours.mockReturnValue({
     data: [workingHours],
     isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  });
+  hookMocks.useUpdateAppointment.mockReturnValue({
+    isPending: false,
+    mutateAsync: hookMocks.updateAppointment,
   });
 });
 
@@ -66,6 +87,26 @@ describe('calendar admin components', () => {
         is_open: true,
       });
     });
+    expect(screen.queryByRole('button', { name: 'Zapisz' }))
+      .not.toBeInTheDocument();
+  });
+
+  it('keeps working-hours editing open when saving fails', async () => {
+    hookMocks.updateWorkingHours.mockRejectedValue(
+      new Error('hours update failed'),
+    );
+    render(<WorkingHoursEditor authenticated />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edytuj' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zapisz' }));
+
+    await waitFor(() => {
+      expect(toastMocks.error).toHaveBeenCalledWith(
+        'Błąd podczas zapisywania',
+      );
+    });
+    expect(screen.getByRole('button', { name: 'Zapisz' }))
+      .toBeInTheDocument();
   });
 
   it('loads and creates blocked times for the selected date with HH:mm values', async () => {
@@ -85,18 +126,105 @@ describe('calendar admin components', () => {
     });
   });
 
-  it('updates only appointment fields supported by the protected API', () => {
+  it('reschedules and confirms an appointment through the protected API', async () => {
+    render(<AppointmentCard appointment={appointment} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź' }));
+    fireEvent.change(screen.getByLabelText('Data'), {
+      target: { value: '2030-06-15' },
+    });
+    fireEvent.change(screen.getByLabelText('Godzina'), {
+      target: { value: '11:00' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Zapisz' }));
+
+    await waitFor(() => {
+      expect(hookMocks.updateAppointment).toHaveBeenCalledWith({
+        id: 'appointment-id',
+        appointment_date: '2030-06-15',
+        arrival_time: '11:00:00',
+        estimated_duration_minutes: 60,
+        technician_note: '',
+        status: 'potwierdzone',
+      });
+    });
+    expect(screen.queryByRole('button', { name: 'Zapisz' }))
+      .not.toBeInTheDocument();
+  });
+
+  it('keeps appointment editing open and reports a slot conflict', async () => {
+    hookMocks.updateAppointment.mockRejectedValue(
+      new ApiClientError(409, 'SLOT_TAKEN', 'Slot taken'),
+    );
     render(<AppointmentCard appointment={appointment} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Potwierdź' }));
     fireEvent.click(screen.getByRole('button', { name: 'Zapisz' }));
 
-    expect(hookMocks.updateAppointment).toHaveBeenCalledWith({
-      id: 'appointment-id',
-      estimated_duration_minutes: 60,
-      technician_note: '',
-      status: 'potwierdzone',
+    await waitFor(() => {
+      expect(toastMocks.error).toHaveBeenCalledWith(
+        'Ten termin jest już zajęty. Wybierz inną datę lub godzinę.',
+      );
     });
+    expect(screen.getByRole('button', { name: 'Zapisz' }))
+      .toBeInTheDocument();
+  });
+
+  it('announces working-hours loading and errors with retry', () => {
+    const refetch = vi.fn();
+    hookMocks.useWorkingHours.mockReturnValueOnce({
+      data: undefined,
+      isLoading: true,
+      error: null,
+      refetch,
+    });
+    const { rerender } = render(<WorkingHoursEditor authenticated />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('Ładowanie');
+
+    hookMocks.useWorkingHours.mockReturnValueOnce({
+      data: undefined,
+      isLoading: false,
+      error: new Error('hours failed'),
+      refetch,
+    });
+    rerender(<WorkingHoursEditor authenticated />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Nie udało się pobrać godzin otwarcia',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }));
+    expect(refetch).toHaveBeenCalled();
+  });
+
+  it('announces blocked-time loading and errors without showing an empty list', () => {
+    const refetch = vi.fn();
+    hookMocks.useBlockedTimes.mockReturnValueOnce({
+      data: undefined,
+      isLoading: true,
+      error: null,
+      refetch,
+    });
+    const { rerender } = render(<BlockedTimesEditor authenticated />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('Ładowanie');
+    expect(
+      screen.queryByText('Brak zablokowanych terminów.'),
+    ).not.toBeInTheDocument();
+
+    hookMocks.useBlockedTimes.mockReturnValueOnce({
+      data: undefined,
+      isLoading: false,
+      error: new Error('blocks failed'),
+      refetch,
+    });
+    rerender(<BlockedTimesEditor authenticated />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Nie udało się pobrać zablokowanych terminów',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }));
+    expect(refetch).toHaveBeenCalled();
   });
 });
 

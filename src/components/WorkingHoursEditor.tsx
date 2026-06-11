@@ -17,14 +17,44 @@ interface WorkingHoursEditorProps {
 export function WorkingHoursEditor({
   authenticated,
 }: WorkingHoursEditorProps) {
-  const { data: workingHours, isLoading } = useWorkingHours(authenticated);
+  const {
+    data: workingHours,
+    error,
+    isLoading,
+    refetch,
+  } = useWorkingHours(authenticated);
   const updateMutation = useUpdateWorkingHours();
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // local state for editing a row
   const [editData, setEditData] = useState<Partial<WorkingHours>>({});
 
-  if (isLoading || !workingHours) return <div className="p-4 text-center">Ładowanie...</div>;
+  if (isLoading) {
+    return (
+      <div role="status" className="p-4 text-center text-muted-foreground">
+        Ładowanie godzin otwarcia...
+      </div>
+    );
+  }
+
+  if (error || !workingHours) {
+    return (
+      <div
+        role="alert"
+        className="p-4 text-center text-destructive border border-destructive/20 rounded-lg space-y-3"
+      >
+        <p>Nie udało się pobrać godzin otwarcia.</p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => void refetch()}
+        >
+          Spróbuj ponownie
+        </Button>
+      </div>
+    );
+  }
 
   const handleEdit = (wh: WorkingHours) => {
     setEditingId(wh.id);

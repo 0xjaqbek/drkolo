@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
+import { ApiClientError } from '@/lib/types';
 import {
   useAppointmentsByDate,
   useBlockedTimes,
@@ -31,7 +32,12 @@ const supabaseMocks = vi.hoisted(() => ({
   from: vi.fn(),
 }));
 
-vi.mock('@/lib/calendarAdminApi', () => apiMocks);
+vi.mock('@/lib/calendarAdminApi', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/calendarAdminApi')>(
+    '@/lib/calendarAdminApi',
+  );
+  return { ...actual, ...apiMocks };
+});
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -129,6 +135,21 @@ describe('calendar admin queries', () => {
     )).not.toContain('server-secret');
     expect(supabaseMocks.from).not.toHaveBeenCalled();
   });
+
+  it('clears the stored calendar password after a protected 401', async () => {
+    sessionStorage.setItem(CALENDAR_SESSION_KEY, 'expired-secret');
+    apiMocks.getWorkingHours.mockRejectedValue(
+      new ApiClientError(401, 'UNAUTHORIZED', 'Unauthorized'),
+    );
+    const { wrapper } = createWrapper();
+    const { result } = renderHook(() => useWorkingHours(true), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(sessionStorage.getItem(CALENDAR_SESSION_KEY)).toBeNull();
+  });
 });
 
 describe('calendar admin mutations', () => {
@@ -156,6 +177,8 @@ describe('calendar admin mutations', () => {
       await result.current.update.mutateAsync({
         id: 'appointment-id',
         status: 'potwierdzone',
+        appointment_date: '2030-06-15',
+        arrival_time: '11:00',
         estimated_duration_minutes: 90,
         technician_note: 'Gotowe jutro',
       });
@@ -169,6 +192,8 @@ describe('calendar admin mutations', () => {
       'appointment-id',
       {
         status: 'potwierdzone',
+        appointment_date: '2030-06-15',
+        arrival_time: '11:00',
         estimated_duration_minutes: 90,
         technician_note: 'Gotowe jutro',
       },
