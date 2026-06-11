@@ -1,3 +1,5 @@
+/* global Deno */
+
 import {
   ApiProblem,
   normalizePhone,
@@ -15,7 +17,8 @@ const MAX_BODY_BYTES = 8192;
 const MAX_DURATION_MINUTES = 1440;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+const TIME_PATTERN =
+  /^((?:[01]\d|2[0-3])):([0-5]\d)(?::([0-5]\d))?$/;
 const APPOINTMENT_STATUSES = new Set([
   "zapytanie",
   "potwierdzone",
@@ -122,8 +125,33 @@ export interface CalendarAdminDependencies
   adminPassword: string | undefined;
 }
 
+type CalendarAdminTable =
+  | "service_working_hours"
+  | "service_appointments"
+  | "service_blocked_times";
+
+interface CalendarAdminQueryResult<T> {
+  data: T | null;
+  error: unknown;
+}
+
+interface CalendarAdminQuery<T> extends
+  PromiseLike<CalendarAdminQueryResult<T>> {
+  select(columns: string): CalendarAdminQuery<T>;
+  order(column: string): CalendarAdminQuery<T>;
+  eq(column: string, value: unknown): CalendarAdminQuery<T>;
+  neq(column: string, value: unknown): CalendarAdminQuery<T>;
+  update(value: unknown): CalendarAdminQuery<T>;
+  insert(value: unknown): CalendarAdminQuery<T>;
+  delete(): CalendarAdminQuery<T>;
+  single<TResult = T>(): PromiseLike<CalendarAdminQueryResult<TResult>>;
+  maybeSingle<TResult = T>(): PromiseLike<
+    CalendarAdminQueryResult<TResult | null>
+  >;
+}
+
 interface CalendarAdminClient {
-  from(table: string): any;
+  from<T>(table: CalendarAdminTable): CalendarAdminQuery<T>;
 }
 
 function requestProblem(
@@ -208,11 +236,24 @@ function validateUuid(value: string | null): string {
   return value;
 }
 
-function validateTime(value: unknown): string {
-  if (typeof value !== "string" || !TIME_PATTERN.test(value)) {
+function normalizeTime(
+  value: unknown,
+  requireHalfHour: boolean,
+): string {
+  if (typeof value !== "string") {
     throw requestProblem("Invalid time", "INVALID_TIME");
   }
-  return value;
+
+  const match = TIME_PATTERN.exec(value);
+  if (
+    !match ||
+    (match[3] !== undefined && match[3] !== "00") ||
+    (requireHalfHour && match[2] !== "00" && match[2] !== "30")
+  ) {
+    throw requestProblem("Invalid time", "INVALID_TIME");
+  }
+
+  return `${match[1]}:${match[2]}:00`;
 }
 
 function validateDuration(
@@ -254,8 +295,8 @@ function validateWorkingHoursUpdate(value: unknown): WorkingHoursUpdate {
     return { open_time: null, close_time: null, is_open: false };
   }
 
-  const openTime = validateTime(value.open_time);
-  const closeTime = validateTime(value.close_time);
+  const openTime = normalizeTime(value.open_time, true);
+  const closeTime = normalizeTime(value.close_time, true);
   if (openTime >= closeTime) {
     throw requestProblem("Invalid time range", "INVALID_TIME_RANGE");
   }
@@ -286,7 +327,7 @@ function validateManualAppointment(value: unknown): ManualAppointmentInput {
 
   return {
     appointment_date: validateCalendarDate(value.appointment_date),
-    arrival_time: validateTime(value.arrival_time),
+    arrival_time: normalizeTime(value.arrival_time, true),
     customer_name: requiredString(value, "customer_name", 120),
     customer_phone: customerPhone,
     customer_phone_normalized: normalizePhone(customerPhone),
@@ -347,8 +388,8 @@ function validateBlockedTime(value: unknown): BlockedTimeInput {
     "reason",
   ]);
 
-  const startTime = validateTime(value.start_time);
-  const endTime = validateTime(value.end_time);
+  const startTime = normalizeTime(value.start_time, false);
+  const endTime = normalizeTime(value.end_time, false);
   if (startTime >= endTime) {
     throw requestProblem("Invalid time range", "INVALID_TIME_RANGE");
   }
@@ -473,6 +514,19 @@ function blockedTimeJson(row: BlockedTimeRow): BlockedTimeRow {
   };
 }
 
+async function runAppointmentMutation<T>(
+  operation: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (isRecord(error) && error.code === "23505") {
+      throw requestProblem("Slot taken", "SLOT_TAKEN", 409);
+    }
+    throw error;
+  }
+}
+
 export async function handleCalendarAdmin(
   req: Request,
   deps: CalendarAdminDependencies,
@@ -527,7 +581,9 @@ export async function handleCalendarAdmin(
           const appointment = validateManualAppointment(
             await readBoundedJson(req),
           );
-          const row = await deps.createAppointment(appointment);
+          const row = await runAppointmentMutation(
+            () => deps.createAppointment(appointment),
+          );
           return json(appointmentJson(row), 201);
         }
         if (req.method === "PATCH") {
@@ -535,7 +591,9 @@ export async function handleCalendarAdmin(
           const update = validateAppointmentUpdate(
             await readBoundedJson(req),
           );
-          const row = await deps.updateAppointment(id, update);
+          const row = await runAppointmentMutation(
+            () => deps.updateAppointment(id, update),
+          );
           return row ? json(appointmentJson(row)) : notFound();
         }
         return methodNotAllowed();
@@ -585,7 +643,7 @@ export async function handleCalendarAdmin(
 
 function throwOnDatabaseError(error: unknown): void {
   if (error) {
-    throw new Error("Database operation failed");
+    throw error;
   }
 }
 
@@ -595,7 +653,7 @@ export function createCalendarAdminDependencies(
   return {
     async listWorkingHours(): Promise<WorkingHoursRow[]> {
       const { data, error } = await client
-        .from("service_working_hours")
+        .from<WorkingHoursRow[]>("service_working_hours")
         .select(WORKING_HOURS_FIELDS)
         .order("day_of_week");
       throwOnDatabaseError(error);
@@ -607,18 +665,18 @@ export function createCalendarAdminDependencies(
       update: WorkingHoursUpdate,
     ): Promise<WorkingHoursRow | null> {
       const { data, error } = await client
-        .from("service_working_hours")
+        .from<WorkingHoursRow>("service_working_hours")
         .update(update)
         .eq("id", id)
         .select(WORKING_HOURS_FIELDS)
-        .maybeSingle();
+        .maybeSingle<WorkingHoursRow>();
       throwOnDatabaseError(error);
       return (data as WorkingHoursRow | null) ?? null;
     },
 
     async listAppointments(date: string): Promise<AdminAppointmentRow[]> {
       const { data, error } = await client
-        .from("service_appointments")
+        .from<AdminAppointmentRow[]>("service_appointments")
         .select(APPOINTMENT_FIELDS)
         .eq("appointment_date", date)
         .neq("status", "odrzucone")
@@ -629,7 +687,7 @@ export function createCalendarAdminDependencies(
 
     async listPendingAppointments(): Promise<AdminAppointmentRow[]> {
       const { data, error } = await client
-        .from("service_appointments")
+        .from<AdminAppointmentRow[]>("service_appointments")
         .select(APPOINTMENT_FIELDS)
         .eq("status", "zapytanie")
         .order("appointment_date")
@@ -642,10 +700,10 @@ export function createCalendarAdminDependencies(
       appointment: ManualAppointmentInput,
     ): Promise<AdminAppointmentRow> {
       const { data, error } = await client
-        .from("service_appointments")
+        .from<AdminAppointmentRow>("service_appointments")
         .insert(appointment)
         .select(APPOINTMENT_FIELDS)
-        .single();
+        .single<AdminAppointmentRow>();
       throwOnDatabaseError(error);
       if (!data) {
         throw new Error("Database operation failed");
@@ -658,18 +716,18 @@ export function createCalendarAdminDependencies(
       update: AppointmentUpdate,
     ): Promise<AdminAppointmentRow | null> {
       const { data, error } = await client
-        .from("service_appointments")
+        .from<AdminAppointmentRow>("service_appointments")
         .update(update)
         .eq("id", id)
         .select(APPOINTMENT_FIELDS)
-        .maybeSingle();
+        .maybeSingle<AdminAppointmentRow>();
       throwOnDatabaseError(error);
       return (data as AdminAppointmentRow | null) ?? null;
     },
 
     async listBlockedTimes(date: string): Promise<BlockedTimeRow[]> {
       const { data, error } = await client
-        .from("service_blocked_times")
+        .from<BlockedTimeRow[]>("service_blocked_times")
         .select(BLOCKED_TIME_FIELDS)
         .eq("block_date", date)
         .order("start_time");
@@ -681,10 +739,10 @@ export function createCalendarAdminDependencies(
       block: BlockedTimeInput,
     ): Promise<BlockedTimeRow> {
       const { data, error } = await client
-        .from("service_blocked_times")
+        .from<BlockedTimeRow>("service_blocked_times")
         .insert(block)
         .select(BLOCKED_TIME_FIELDS)
-        .single();
+        .single<BlockedTimeRow>();
       throwOnDatabaseError(error);
       if (!data) {
         throw new Error("Database operation failed");
@@ -694,11 +752,11 @@ export function createCalendarAdminDependencies(
 
     async deleteBlockedTime(id: string): Promise<boolean> {
       const { data, error } = await client
-        .from("service_blocked_times")
+        .from<{ id: string }>("service_blocked_times")
         .delete()
         .eq("id", id)
         .select("id")
-        .maybeSingle();
+        .maybeSingle<{ id: string }>();
       throwOnDatabaseError(error);
       return Boolean(data);
     },
@@ -715,7 +773,9 @@ if (typeof Deno !== "undefined" && typeof Deno.serve === "function") {
   );
   const dependencies: CalendarAdminDependencies = {
     adminPassword: Deno.env.get("ADMIN_PASSWORD"),
-    ...createCalendarAdminDependencies(client),
+    ...createCalendarAdminDependencies(
+      client as unknown as CalendarAdminClient,
+    ),
   };
 
   Deno.serve((req: Request) => handleCalendarAdmin(req, dependencies));

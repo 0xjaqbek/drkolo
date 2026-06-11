@@ -2,6 +2,8 @@ const commonHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, apikey, x-client-info, x-admin-password, x-customer-phone, x-lookup-token, content-type",
+  "Access-Control-Allow-Methods":
+    "GET, POST, PATCH, DELETE, OPTIONS",
   "Cache-Control": "no-store",
 } as const;
 

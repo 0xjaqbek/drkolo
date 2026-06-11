@@ -62,6 +62,26 @@ describe("verifyAdminPassword", () => {
       verifyAdminPassword(supplied, configured),
     ).resolves.toBe(false);
   });
+
+  it.each([
+    [undefined, "correct", ["", "correct"]],
+    ["correct", undefined, ["correct", ""]],
+    ["", "", ["", ""]],
+  ] as const)(
+    "hashes both normalized inputs before rejecting empty credentials",
+    async (supplied, configured, expectedInputs) => {
+      const digest = vi.fn(async (value: string) => {
+        return new Uint8Array(32).fill(value.length);
+      });
+
+      await expect(
+        verifyAdminPassword(supplied, configured, digest),
+      ).resolves.toBe(false);
+      expect(digest.mock.calls.map(([value]) => value)).toEqual(
+        expectedInputs,
+      );
+    },
+  );
 });
 
 function expectApiProblem(
@@ -249,6 +269,10 @@ describe("HTTP response helpers", () => {
       "Access-Control-Allow-Headers",
       "authorization, apikey, x-client-info, x-admin-password, x-customer-phone, x-lookup-token, content-type",
     ],
+    [
+      "Access-Control-Allow-Methods",
+      "GET, POST, PATCH, DELETE, OPTIONS",
+    ],
     ["Content-Type", "application/json; charset=utf-8"],
     ["Cache-Control", "no-store"],
   ])("sets %s on JSON responses", (header, value) => {
@@ -272,6 +296,9 @@ describe("HTTP response helpers", () => {
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
     expect(response.headers.get("Access-Control-Allow-Headers")).toBe(
       "authorization, apikey, x-client-info, x-admin-password, x-customer-phone, x-lookup-token, content-type",
+    );
+    expect(response.headers.get("Access-Control-Allow-Methods")).toBe(
+      "GET, POST, PATCH, DELETE, OPTIONS",
     );
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(await response.text()).toBe("");
@@ -1048,12 +1075,35 @@ describe("calendar admin route mapping", () => {
     );
 
     expect(updateWorkingHours).toHaveBeenCalledWith(calendarRowId, {
-      open_time: "10:00",
-      close_time: "19:00",
+      open_time: "10:00:00",
+      close_time: "19:00:00",
       is_open: true,
     });
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual(workingHoursRow);
+  });
+
+  it("accepts current HH:mm:ss working-hour payloads", async () => {
+    const updateWorkingHours = vi.fn().mockResolvedValue(workingHoursRow);
+    const response = await handleCalendarAdmin(
+      calendarJsonRequest(
+        `working-hours&id=${calendarRowId}`,
+        "PATCH",
+        {
+          open_time: "10:00:00",
+          close_time: "19:00:00",
+          is_open: true,
+        },
+      ),
+      calendarDependencies({ updateWorkingHours }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(updateWorkingHours).toHaveBeenCalledWith(calendarRowId, {
+      open_time: "10:00:00",
+      close_time: "19:00:00",
+      is_open: true,
+    });
   });
 
   it("maps GET appointments by date with all admin component fields", async () => {
@@ -1110,7 +1160,7 @@ describe("calendar admin route mapping", () => {
 
     expect(createAppointment).toHaveBeenCalledWith({
       appointment_date: "2026-06-11",
-      arrival_time: "10:30",
+      arrival_time: "10:30:00",
       customer_name: "Jan Kowalski",
       customer_phone: "+48 600-123-456",
       customer_phone_normalized: "48600123456",
@@ -1124,6 +1174,32 @@ describe("calendar admin route mapping", () => {
     });
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual(createdRow);
+  });
+
+  it("accepts the current HH:mm:ss manual appointment payload", async () => {
+    const createAppointment = vi.fn().mockResolvedValue({
+      ...adminAppointmentRow,
+      status: "potwierdzone",
+      source: "manual",
+    });
+    const response = await handleCalendarAdmin(
+      calendarJsonRequest("appointments", "POST", {
+        appointment_date: "2026-06-11",
+        arrival_time: "10:30:00",
+        customer_name: "Jan",
+        customer_phone: "+48600123456",
+        bike_manufacturer: "Trek",
+        bike_model: "Fuel EX",
+        service_note: null,
+        estimated_duration_minutes: 60,
+      }),
+      calendarDependencies({ createAppointment }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(createAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({ arrival_time: "10:30:00" }),
+    );
   });
 
   it("maps PATCH appointments with only the update allowlist", async () => {
@@ -1182,12 +1258,33 @@ describe("calendar admin route mapping", () => {
 
     expect(createBlockedTime).toHaveBeenCalledWith({
       block_date: "2026-06-11",
-      start_time: "12:00",
-      end_time: "13:00",
+      start_time: "12:00:00",
+      end_time: "13:00:00",
       reason: "Lunch",
     });
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual(blockedTimeRow);
+  });
+
+  it("accepts minute-resolution HH:mm:ss blocked-time payloads", async () => {
+    const createBlockedTime = vi.fn().mockResolvedValue(blockedTimeRow);
+    const response = await handleCalendarAdmin(
+      calendarJsonRequest("blocked-times", "POST", {
+        block_date: "2026-06-11",
+        start_time: "12:05:00",
+        end_time: "12:25:00",
+        reason: null,
+      }),
+      calendarDependencies({ createBlockedTime }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(createBlockedTime).toHaveBeenCalledWith({
+      block_date: "2026-06-11",
+      start_time: "12:05:00",
+      end_time: "12:25:00",
+      reason: null,
+    });
   });
 
   it("maps DELETE blocked-times by UUID", async () => {
@@ -1298,8 +1395,16 @@ describe("calendar admin validation and errors", () => {
   it.each([
     [
       {
-        open_time: "9:00",
+        open_time: "10:15",
         close_time: "19:00",
+        is_open: true,
+      },
+      "INVALID_TIME",
+    ],
+    [
+      {
+        open_time: "10:30:01",
+        close_time: "19:00:00",
         is_open: true,
       },
       "INVALID_TIME",
@@ -1377,7 +1482,20 @@ describe("calendar admin validation and errors", () => {
     [
       {
         appointment_date: "2026-06-11",
-        arrival_time: "10:30:00",
+        arrival_time: "10:15",
+        customer_name: "Jan",
+        customer_phone: "+48600123456",
+        bike_manufacturer: "Trek",
+        bike_model: "Fuel EX",
+        service_note: null,
+        estimated_duration_minutes: 60,
+      },
+      "INVALID_TIME",
+    ],
+    [
+      {
+        appointment_date: "2026-06-11",
+        arrival_time: "10:30:01",
         customer_name: "Jan",
         customer_phone: "+48600123456",
         bike_manufacturer: "Trek",
@@ -1452,7 +1570,7 @@ describe("calendar admin validation and errors", () => {
     [
       {
         block_date: "2026-06-11",
-        start_time: "12:00:00",
+        start_time: "12:00:01",
         end_time: "13:00",
         reason: null,
       },
@@ -1563,6 +1681,82 @@ describe("calendar admin validation and errors", () => {
     });
     expect(JSON.stringify(payload)).not.toContain(calendarAdminPassword);
   });
+
+  it.each([
+    ["POST", "createAppointment"],
+    ["PATCH", "updateAppointment"],
+  ] as const)(
+    "maps appointment %s unique violations to SLOT_TAKEN",
+    async (method, dependencyName) => {
+      const deps = calendarDependencies({
+        [dependencyName]: vi.fn().mockRejectedValue({
+          code: "23505",
+          message: `duplicate with ${calendarAdminPassword}`,
+        }),
+      });
+      const request = method === "POST"
+        ? calendarJsonRequest("appointments", "POST", {
+          appointment_date: "2026-06-11",
+          arrival_time: "10:30",
+          customer_name: "Jan",
+          customer_phone: "+48600123456",
+          bike_manufacturer: "Trek",
+          bike_model: "Fuel EX",
+          service_note: null,
+          estimated_duration_minutes: 60,
+        })
+        : calendarJsonRequest(
+          `appointments&id=${calendarRowId}`,
+          "PATCH",
+          { status: "potwierdzone" },
+        );
+      const response = await handleCalendarAdmin(request, deps);
+
+      expect(response.status).toBe(409);
+      await expect(response.json()).resolves.toEqual({
+        error: "Slot taken",
+        code: "SLOT_TAKEN",
+      });
+    },
+  );
+
+  it.each([
+    ["POST", "createAppointment"],
+    ["PATCH", "updateAppointment"],
+  ] as const)(
+    "keeps non-unique appointment %s failures generic",
+    async (method, dependencyName) => {
+      const deps = calendarDependencies({
+        [dependencyName]: vi.fn().mockRejectedValue({
+          code: "XX000",
+          message: `database failed with ${calendarAdminPassword}`,
+        }),
+      });
+      const request = method === "POST"
+        ? calendarJsonRequest("appointments", "POST", {
+          appointment_date: "2026-06-11",
+          arrival_time: "10:30",
+          customer_name: "Jan",
+          customer_phone: "+48600123456",
+          bike_manufacturer: "Trek",
+          bike_model: "Fuel EX",
+          service_note: null,
+          estimated_duration_minutes: 60,
+        })
+        : calendarJsonRequest(
+          `appointments&id=${calendarRowId}`,
+          "PATCH",
+          { status: "potwierdzone" },
+        );
+      const response = await handleCalendarAdmin(request, deps);
+
+      expect(response.status).toBe(500);
+      await expect(response.json()).resolves.toEqual({
+        error: "Database operation failed",
+        code: "DB_ERROR",
+      });
+    },
+  );
 
   it.each([
     ["working-hours", "PATCH", "updateWorkingHours"],
