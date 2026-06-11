@@ -162,6 +162,116 @@ export class ApiClientError extends Error {
   }
 }
 
+export interface BrowserApiConfig {
+  functionsBase: string;
+  anonKey: string;
+}
+
+export function getBrowserApiConfig(): BrowserApiConfig {
+  const rawUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
+
+  if (!rawUrl || !anonKey) {
+    throw new ApiClientError(
+      0,
+      'CONFIG_ERROR',
+      'Invalid browser API configuration',
+    );
+  }
+
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    throw new ApiClientError(
+      0,
+      'CONFIG_ERROR',
+      'Invalid browser API configuration',
+    );
+  }
+
+  const isSupabaseHost = url.hostname === 'supabase.co' ||
+    url.hostname.endsWith('.supabase.co');
+  if (
+    url.protocol !== 'https:' ||
+    !isSupabaseHost ||
+    url.username ||
+    url.password
+  ) {
+    throw new ApiClientError(
+      0,
+      'CONFIG_ERROR',
+      'Invalid browser API configuration',
+    );
+  }
+
+  return {
+    functionsBase: `${url.origin}/functions/v1`,
+    anonKey,
+  };
+}
+
+function fallbackMessage(response: Response): string {
+  const suffix = response.statusText ? ` ${response.statusText}` : '';
+  return `Request failed with status ${response.status}${suffix}`;
+}
+
+export async function parseApiResponse<T>(
+  response: Response,
+  allowNoContent = false,
+  isValid?: (payload: unknown) => boolean,
+): Promise<T> {
+  if (response.status === 204 && response.ok && allowNoContent) {
+    return undefined as T;
+  }
+
+  const text = await response.text();
+  let payload: unknown;
+  let parsed = false;
+
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+      parsed = true;
+    } catch {
+      payload = undefined;
+    }
+  }
+
+  if (!response.ok) {
+    const error = (
+      parsed &&
+      typeof payload === 'object' &&
+      payload !== null &&
+      !Array.isArray(payload)
+    ) ? payload as Record<string, unknown> : {};
+    const message = typeof error.error === 'string'
+      ? error.error
+      : fallbackMessage(response);
+    const code = typeof error.code === 'string' ? error.code : 'HTTP_ERROR';
+
+    throw new ApiClientError(response.status, code, message);
+  }
+
+  const contentType = response.headers.get('Content-Type')
+    ?.split(';', 1)[0]
+    .trim()
+    .toLowerCase();
+  if (
+    contentType !== 'application/json' ||
+    !parsed ||
+    (isValid !== undefined && !isValid(payload))
+  ) {
+    throw new ApiClientError(
+      response.status,
+      'INVALID_RESPONSE',
+      'Invalid API response',
+    );
+  }
+
+  return payload as T;
+}
+
 export interface PageView {
   id: string;
   path: string;

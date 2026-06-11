@@ -61,6 +61,8 @@ describe('bookingApi', () => {
       bike_manufacturer: 'Trek',
       bike_model: 'Fuel EX',
       service_note: 'Full service',
+      password: 'must-not-leak',
+      secret: 'must-not-leak',
     };
     const created = {
       id: 'appointment-id',
@@ -81,8 +83,15 @@ describe('bookingApi', () => {
       apikey: 'anon-secret',
       'Content-Type': 'application/json',
     }));
-    expect(JSON.parse(init.body as string)).toEqual(input);
-    expect(Object.keys(JSON.parse(init.body as string))).toHaveLength(7);
+    expect(JSON.parse(init.body as string)).toEqual({
+      date: '2026-06-11',
+      time: '10:30',
+      customer_name: 'Jan Kowalski',
+      customer_phone: '+48600123456',
+      bike_manufacturer: 'Trek',
+      bike_model: 'Fuel EX',
+      service_note: 'Full service',
+    });
   });
 
   it('sends status credentials only in dedicated headers', async () => {
@@ -158,6 +167,49 @@ describe('bookingApi', () => {
         status: 502,
         code: 'HTTP_ERROR',
         message: 'Request failed with status 502 Bad Gateway',
+      }),
+    );
+  });
+
+  it.each([
+    ['', 'anon-secret'],
+    ['https://project.supabase.co', ''],
+    ['http://project.supabase.co', 'anon-secret'],
+    ['https://project.supabase.co.evil.example', 'anon-secret'],
+    ['not a url', 'anon-secret'],
+  ])(
+    'rejects invalid browser API config before fetch',
+    async (url, anonKey) => {
+      const { ApiClientError, getAvailability } = await loadClient();
+      vi.stubEnv('VITE_SUPABASE_URL', url);
+      vi.stubEnv('VITE_SUPABASE_ANON_KEY', anonKey);
+
+      const promise = getAvailability('2026-06-11');
+
+      await expect(promise).rejects.toBeInstanceOf(ApiClientError);
+      await expect(promise).rejects.toEqual(expect.objectContaining({
+        status: 0,
+        code: 'CONFIG_ERROR',
+      }));
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ['empty', new Response(null, { status: 200 })],
+    ['non-JSON', new Response('ok', { status: 200 })],
+    ['invalid JSON', new Response('{', {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })],
+  ])('rejects a successful %s response', async (_label, response) => {
+    fetchMock.mockResolvedValue(response);
+    const { getAvailability } = await loadClient();
+
+    await expect(getAvailability('2026-06-11')).rejects.toEqual(
+      expect.objectContaining({
+        status: 200,
+        code: 'INVALID_RESPONSE',
       }),
     );
   });

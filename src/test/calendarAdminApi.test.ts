@@ -63,13 +63,24 @@ describe('calendarAdminApi', () => {
       open_time: '10:00',
       close_time: '19:00',
       is_open: true,
+      password: 'must-not-leak',
+      secret: 'must-not-leak',
     };
-    fetchMock.mockResolvedValue(jsonResponse({ id: 'row/id', ...update }));
+    fetchMock.mockResolvedValue(jsonResponse({
+      id: 'row/id',
+      open_time: '10:00',
+      close_time: '19:00',
+      is_open: true,
+    }));
     const { updateWorkingHours } = await loadClient();
 
     await updateWorkingHours('row/id', update, password);
 
-    expectRequest('working-hours&id=row%2Fid', 'PATCH', update);
+    expectRequest('working-hours&id=row%2Fid', 'PATCH', {
+      open_time: '10:00',
+      close_time: '19:00',
+      is_open: true,
+    });
   });
 
   it('gets appointments by an encoded date', async () => {
@@ -100,13 +111,24 @@ describe('calendarAdminApi', () => {
       bike_model: 'Fuel EX',
       service_note: null,
       estimated_duration_minutes: 60,
+      password: 'must-not-leak',
+      secret: 'must-not-leak',
     };
     fetchMock.mockResolvedValue(jsonResponse({ id: 'appointment-id' }, 201));
     const { createManualAppointment } = await loadClient();
 
     await createManualAppointment(input, password);
 
-    expectRequest('appointments', 'POST', input);
+    expectRequest('appointments', 'POST', {
+      appointment_date: '2026-06-11',
+      arrival_time: '10:30',
+      customer_name: 'Jan Kowalski',
+      customer_phone: '+48600123456',
+      bike_manufacturer: 'Trek',
+      bike_model: 'Fuel EX',
+      service_note: null,
+      estimated_duration_minutes: 60,
+    });
   });
 
   it('patches an appointment with an encoded id', async () => {
@@ -114,13 +136,19 @@ describe('calendarAdminApi', () => {
       status: 'potwierdzone' as const,
       estimated_duration_minutes: 90,
       technician_note: 'Ready tomorrow',
+      password: 'must-not-leak',
+      secret: 'must-not-leak',
     };
     fetchMock.mockResolvedValue(jsonResponse({ id: 'appointment/id' }));
     const { updateAppointment } = await loadClient();
 
     await updateAppointment('appointment/id', update, password);
 
-    expectRequest('appointments&id=appointment%2Fid', 'PATCH', update);
+    expectRequest('appointments&id=appointment%2Fid', 'PATCH', {
+      status: 'potwierdzone',
+      estimated_duration_minutes: 90,
+      technician_note: 'Ready tomorrow',
+    });
   });
 
   it('gets blocked times by an encoded date', async () => {
@@ -138,13 +166,20 @@ describe('calendarAdminApi', () => {
       start_time: '12:00',
       end_time: '13:00',
       reason: 'Lunch',
+      password: 'must-not-leak',
+      secret: 'must-not-leak',
     };
     fetchMock.mockResolvedValue(jsonResponse({ id: 'blocked-id' }, 201));
     const { createBlockedTime } = await loadClient();
 
     await createBlockedTime(input, password);
 
-    expectRequest('blocked-times', 'POST', input);
+    expectRequest('blocked-times', 'POST', {
+      block_date: '2026-06-11',
+      start_time: '12:00',
+      end_time: '13:00',
+      reason: 'Lunch',
+    });
   });
 
   it('deletes a blocked time with an encoded id', async () => {
@@ -193,6 +228,58 @@ describe('calendarAdminApi', () => {
       code: 'UNAUTHORIZED',
       message: 'Unauthorized',
     }));
+  });
+
+  it('rejects invalid config before fetch receives the admin password', async () => {
+    const { getWorkingHours } = await loadClient();
+    vi.stubEnv(
+      'VITE_SUPABASE_URL',
+      'https://project.supabase.co.attacker.example',
+    );
+
+    await expect(getWorkingHours(password)).rejects.toEqual(
+      expect.objectContaining({
+        status: 0,
+        code: 'CONFIG_ERROR',
+      }),
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [{}, 200],
+    [{ authenticated: false }, 200],
+    [{ authenticated: 1 }, 201],
+  ])('rejects malformed verify responses', async (body, status) => {
+    fetchMock.mockResolvedValue(jsonResponse(body, status));
+    const { verifyCalendarPassword } = await loadClient();
+
+    await expect(verifyCalendarPassword(password)).rejects.toEqual(
+      expect.objectContaining({
+        status,
+        code: 'INVALID_RESPONSE',
+      }),
+    );
+  });
+
+  it('rejects successful non-JSON admin responses', async () => {
+    fetchMock.mockResolvedValue(new Response('ok', { status: 200 }));
+    const { getWorkingHours } = await loadClient();
+
+    await expect(getWorkingHours(password)).rejects.toEqual(
+      expect.objectContaining({
+        status: 200,
+        code: 'INVALID_RESPONSE',
+      }),
+    );
+  });
+
+  it('returns void for a successful 204 delete response', async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+    const { deleteBlockedTime } = await loadClient();
+
+    await expect(deleteBlockedTime('blocked/id', password)).resolves.toBeUndefined();
+    expectRequest('blocked-times&id=blocked%2Fid', 'DELETE');
   });
 });
 

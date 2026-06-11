@@ -1,5 +1,4 @@
 import {
-  ApiClientError,
   type AppointmentUpdate,
   type BlockedTime,
   type BlockedTimeInput,
@@ -8,14 +7,14 @@ import {
   type ServiceAppointment,
   type WorkingHours,
   type WorkingHoursUpdate,
+  getBrowserApiConfig,
+  parseApiResponse,
 } from './types';
 
 export { ApiClientError } from './types';
 
-const functionsBase = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
 function adminHeaders(
+  anonKey: string,
   password: string,
   includeJson = false,
 ): Record<string, string> {
@@ -27,45 +26,16 @@ function adminHeaders(
   };
 }
 
-function calendarUrl(action: string, key?: 'date' | 'id', value?: string): string {
+function calendarUrl(
+  functionsBase: string,
+  action: string,
+  key?: 'date' | 'id',
+  value?: string,
+): string {
   const suffix = key && value !== undefined
     ? `&${key}=${encodeURIComponent(value)}`
     : '';
   return `${functionsBase}/calendar-admin?action=${action}${suffix}`;
-}
-
-function fallbackMessage(response: Response): string {
-  const suffix = response.statusText ? ` ${response.statusText}` : '';
-  return `Request failed with status ${response.status}${suffix}`;
-}
-
-async function parseResponse<T>(response: Response): Promise<T> {
-  const text = await response.text();
-  let payload: unknown;
-
-  if (text) {
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      payload = undefined;
-    }
-  }
-
-  if (!response.ok) {
-    const error = (
-      typeof payload === 'object' &&
-      payload !== null &&
-      !Array.isArray(payload)
-    ) ? payload as Record<string, unknown> : {};
-    const message = typeof error.error === 'string'
-      ? error.error
-      : fallbackMessage(response);
-    const code = typeof error.code === 'string' ? error.code : 'HTTP_ERROR';
-
-    throw new ApiClientError(response.status, code, message);
-  }
-
-  return payload as T;
 }
 
 async function adminRequest<T>(
@@ -76,21 +46,28 @@ async function adminRequest<T>(
     key?: 'date' | 'id';
     value?: string;
     body?: unknown;
+    allowNoContent?: boolean;
+    isValid?: (payload: unknown) => boolean;
   } = {},
 ): Promise<T> {
   const method = options.method ?? 'GET';
+  const { functionsBase, anonKey } = getBrowserApiConfig();
   const response = await fetch(
-    calendarUrl(action, options.key, options.value),
+    calendarUrl(functionsBase, action, options.key, options.value),
     {
       method,
-      headers: adminHeaders(password, options.body !== undefined),
+      headers: adminHeaders(anonKey, password, options.body !== undefined),
       ...(options.body !== undefined
         ? { body: JSON.stringify(options.body) }
         : {}),
     },
   );
 
-  return parseResponse<T>(response);
+  return parseApiResponse<T>(
+    response,
+    options.allowNoContent,
+    options.isValid,
+  );
 }
 
 export async function verifyCalendarPassword(
@@ -99,6 +76,14 @@ export async function verifyCalendarPassword(
   const result = await adminRequest<{ authenticated: boolean }>(
     'verify',
     password,
+    {
+      isValid: (payload) => (
+        typeof payload === 'object' &&
+        payload !== null &&
+        !Array.isArray(payload) &&
+        (payload as Record<string, unknown>).authenticated === true
+      ),
+    },
   );
   return result.authenticated;
 }
@@ -112,11 +97,16 @@ export function updateWorkingHours(
   update: WorkingHoursUpdate,
   password: string,
 ): Promise<WorkingHours> {
+  const payload: WorkingHoursUpdate = {
+    open_time: update.open_time,
+    close_time: update.close_time,
+    is_open: update.is_open,
+  };
   return adminRequest<WorkingHours>('working-hours', password, {
     method: 'PATCH',
     key: 'id',
     value: id,
-    body: update,
+    body: payload,
   });
 }
 
@@ -140,9 +130,19 @@ export function createManualAppointment(
   appointment: ManualAppointmentInput,
   password: string,
 ): Promise<ServiceAppointment> {
+  const payload: ManualAppointmentInput = {
+    appointment_date: appointment.appointment_date,
+    arrival_time: appointment.arrival_time,
+    customer_name: appointment.customer_name,
+    customer_phone: appointment.customer_phone,
+    bike_manufacturer: appointment.bike_manufacturer,
+    bike_model: appointment.bike_model,
+    service_note: appointment.service_note,
+    estimated_duration_minutes: appointment.estimated_duration_minutes,
+  };
   return adminRequest<ServiceAppointment>('appointments', password, {
     method: 'POST',
-    body: appointment,
+    body: payload,
   });
 }
 
@@ -151,11 +151,21 @@ export function updateAppointment(
   update: AppointmentUpdate,
   password: string,
 ): Promise<ServiceAppointment> {
+  const payload: AppointmentUpdate = {};
+  if (update.status !== undefined) {
+    payload.status = update.status;
+  }
+  if (update.estimated_duration_minutes !== undefined) {
+    payload.estimated_duration_minutes = update.estimated_duration_minutes;
+  }
+  if (update.technician_note !== undefined) {
+    payload.technician_note = update.technician_note;
+  }
   return adminRequest<ServiceAppointment>('appointments', password, {
     method: 'PATCH',
     key: 'id',
     value: id,
-    body: update,
+    body: payload,
   });
 }
 
@@ -173,19 +183,30 @@ export function createBlockedTime(
   blockedTime: BlockedTimeInput,
   password: string,
 ): Promise<BlockedTime> {
+  const payload: BlockedTimeInput = {
+    block_date: blockedTime.block_date,
+    start_time: blockedTime.start_time,
+    end_time: blockedTime.end_time,
+    reason: blockedTime.reason,
+  };
   return adminRequest<BlockedTime>('blocked-times', password, {
     method: 'POST',
-    body: blockedTime,
+    body: payload,
   });
 }
 
 export function deleteBlockedTime(
   id: string,
   password: string,
-): Promise<DeleteBlockedTimeResponse> {
-  return adminRequest<DeleteBlockedTimeResponse>('blocked-times', password, {
-    method: 'DELETE',
-    key: 'id',
-    value: id,
-  });
+): Promise<DeleteBlockedTimeResponse | void> {
+  return adminRequest<DeleteBlockedTimeResponse | void>(
+    'blocked-times',
+    password,
+    {
+      method: 'DELETE',
+      key: 'id',
+      value: id,
+      allowNoContent: true,
+    },
+  );
 }
