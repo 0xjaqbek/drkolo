@@ -80,6 +80,88 @@ export interface BlockedTime {
   created_at: string;
 }
 
+export interface AvailabilityResponse {
+  date: string;
+  timezone: string;
+  open: string | null;
+  close: string | null;
+  slots: string[];
+}
+
+export interface CreateAppointmentInquiryInput {
+  date: string;
+  time: string;
+  customer_name: string;
+  customer_phone: string;
+  bike_manufacturer: string;
+  bike_model: string;
+  service_note: string | null;
+}
+
+export interface CreateAppointmentInquiryResponse {
+  id: string;
+  status: AppointmentStatus;
+  lookup_token: string;
+  message: string;
+}
+
+export interface AppointmentStatusResponse {
+  id: string;
+  date: string;
+  time: string;
+  status: AppointmentStatus;
+  bike_manufacturer: string;
+  bike_model: string;
+  service_note: string | null;
+  created_at: string;
+}
+
+export interface WorkingHoursUpdate {
+  open_time: string | null;
+  close_time: string | null;
+  is_open: boolean;
+}
+
+export interface ManualAppointmentInput {
+  appointment_date: string;
+  arrival_time: string;
+  customer_name: string;
+  customer_phone: string;
+  bike_manufacturer: string;
+  bike_model: string;
+  service_note: string | null;
+  estimated_duration_minutes: number;
+}
+
+export interface AppointmentUpdate {
+  status?: AppointmentStatus;
+  estimated_duration_minutes?: number | null;
+  technician_note?: string | null;
+}
+
+export interface BlockedTimeInput {
+  block_date: string;
+  start_time: string;
+  end_time: string;
+  reason: string | null;
+}
+
+export interface DeleteBlockedTimeResponse {
+  id: string;
+  deleted: true;
+}
+
+export class ApiClientError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ApiClientError';
+  }
+}
+
 export interface PageView {
   id: string;
   path: string;
