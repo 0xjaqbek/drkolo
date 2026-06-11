@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react';
 import { format, isBefore, startOfDay } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { SiteHeader } from '@/components/SiteHeader';
 import { TimelinePicker } from '@/components/TimelinePicker';
 import { SmsDialog } from '@/components/SmsDialog';
 import { Logo } from '@/components/Logo';
-import { useWorkingHours, useAppointmentsByDate, useBlockedTimes, useCreateAppointment } from '@/hooks/useAppointments';
+import {
+  ApiClientError,
+  createAppointmentInquiry,
+  getAvailability,
+} from '@/lib/bookingApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +20,11 @@ import { ArrowLeft, ArrowRight, Calendar as CalendarIcon, CheckCircle, Clock } f
 import { toast } from 'sonner';
 
 const SERVICE_PHONE = "+48511061221";
+
+function normalizeTime(time: string | null): string | null {
+  if (!time) return null;
+  return time.length === 5 ? `${time}:00` : time;
+}
 
 export default function Rezerwacja() {
   useEffect(() => {
@@ -53,16 +63,32 @@ export default function Rezerwacja() {
   const [smsDialogOpen, setSmsDialogOpen] = useState(false);
   const [smsBody, setSmsBody] = useState('');
 
-  // Data fetching
-  const { data: allWorkingHours } = useWorkingHours();
   const dateStr = date ? format(date, 'yyyy-MM-dd') : '';
-  const { data: appointments = [] } = useAppointmentsByDate(dateStr);
-  const { data: blockedTimes = [] } = useBlockedTimes(dateStr);
-  const createMutation = useCreateAppointment();
+  const availabilityQuery = useQuery({
+    queryKey: ['booking-availability', dateStr],
+    queryFn: () => getAvailability(dateStr),
+    enabled: Boolean(dateStr),
+  });
+  const createMutation = useMutation({
+    mutationFn: createAppointmentInquiry,
+  });
 
-  const workingHoursForDate = date && allWorkingHours 
-    ? allWorkingHours.find(wh => wh.day_of_week === date.getDay()) 
+  const workingHoursForDate = date && availabilityQuery.data
+    ? {
+        id: `availability-${dateStr}`,
+        day_of_week: date.getDay(),
+        open_time: normalizeTime(availabilityQuery.data.open),
+        close_time: normalizeTime(availabilityQuery.data.close),
+        is_open: Boolean(
+          availabilityQuery.data.open && availabilityQuery.data.close,
+        ),
+      }
     : undefined;
+
+  const handleDateSelect = (selectedDate: Date | undefined) => {
+    setDate(selectedDate);
+    setTime(null);
+  };
 
   const handleNextStep1 = () => {
     if (!date) {
@@ -92,26 +118,23 @@ export default function Rezerwacja() {
     if (!date || !time) return;
 
     try {
-      // 1. Create appointment in DB
-      await createMutation.mutateAsync({
-        appointment_date: format(date, 'yyyy-MM-dd'),
-        arrival_time: `${time}:00`,
+      const result = await createMutation.mutateAsync({
+        date: format(date, 'yyyy-MM-dd'),
+        time,
         customer_name: name,
         customer_phone: phone,
         bike_manufacturer: manufacturer,
         bike_model: model,
         service_note: note,
-        status: 'zapytanie',
-        source: 'online',
-        estimated_duration_minutes: null,
-        technician_note: null,
       });
+      sessionStorage.setItem(
+        `drkolo_booking_${result.id}`,
+        result.lookup_token,
+      );
 
-      // 2. Generate SMS
       const body = `Nowe zapytanie - Dr Koło\nData: ${format(date, 'dd.MM.yyyy')} o ${time}\nImię: ${name}\nRower: ${manufacturer} ${model}\nOpis: ${note}`;
       setSmsBody(body);
       
-      // 3. Try opening native SMS app
       const smsUri = `sms:${SERVICE_PHONE}?body=${encodeURIComponent(body)}`;
       
       // Create a hidden iframe/link to trigger the intent without losing state
@@ -128,6 +151,13 @@ export default function Rezerwacja() {
 
       setStep(5); // Success step
     } catch (error) {
+      if (error instanceof ApiClientError && error.code === 'SLOT_TAKEN') {
+        setStep(2);
+        setTime(null);
+        toast.error('Ten termin został właśnie zajęty. Wybierz inną godzinę.');
+        await availabilityQuery.refetch();
+        return;
+      }
       toast.error('Wystąpił błąd. Spróbuj ponownie.');
     }
   };
@@ -187,19 +217,12 @@ export default function Rezerwacja() {
                 <Calendar
                   mode="single"
                   selected={date}
-                  onSelect={setDate}
+                  onSelect={handleDateSelect}
                   locale={pl}
                   disabled={(day) => {
                     const today = startOfDay(new Date());
                     if (isBefore(day, today)) return true; // past dates
-                    
-                    // Disable closed days
-                    if (allWorkingHours) {
-                      const wh = allWorkingHours.find(w => w.day_of_week === day.getDay());
-                      if (!wh || !wh.is_open) return true;
-                    }
-                    
-                    return false;
+                    return day.getDay() === 0;
                   }}
                   className="rounded-md border bg-background shadow-sm"
                 />
@@ -227,8 +250,11 @@ export default function Rezerwacja() {
               <TimelinePicker
                 date={date}
                 workingHours={workingHoursForDate}
-                appointments={appointments}
-                blockedTimes={blockedTimes}
+                appointments={[]}
+                blockedTimes={[]}
+                availableSlots={availabilityQuery.data?.slots}
+                isLoading={availabilityQuery.isLoading}
+                error={availabilityQuery.error}
                 selectedTime={time}
                 onSelectTime={setTime}
               />
@@ -319,7 +345,7 @@ export default function Rezerwacja() {
               </div>
 
               <div className="bg-accent/10 text-accent-foreground p-4 rounded-lg text-sm border border-accent/20">
-                <strong>Ważne:</strong> Po kliknięciu "Wyślij zapytanie" otworzy się Twoja aplikacja SMS z gotową wiadomością. Musisz ją wysłać, abyśmy mogli potwierdzić wizytę.
+                <strong>Ważne:</strong> Po kliknięciu "Wyślij zapytanie" utworzymy zgłoszenie i otworzymy Twoją aplikację SMS z gotową wiadomością.
               </div>
 
               <div className="flex justify-between pt-4">
@@ -340,7 +366,7 @@ export default function Rezerwacja() {
               </div>
               <h2 className="text-2xl font-bold">Zapytanie utworzone!</h2>
               <p className="text-muted-foreground max-w-md mx-auto">
-                Jeśli wysłałeś SMS, spodziewaj się wkrótce odpowiedzi z potwierdzeniem terminu.
+                Serwis zadzwoni do Ciebie, aby potwierdzić termin wizyty.
               </p>
               
               <div className="pt-8">
