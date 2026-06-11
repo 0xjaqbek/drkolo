@@ -46,7 +46,6 @@ async function adminRequest<T>(
     key?: 'date' | 'id';
     value?: string;
     body?: unknown;
-    allowNoContent?: boolean;
     isValid?: (payload: unknown) => boolean;
   } = {},
 ): Promise<T> {
@@ -63,11 +62,7 @@ async function adminRequest<T>(
     },
   );
 
-  return parseApiResponse<T>(
-    response,
-    options.allowNoContent,
-    options.isValid,
-  );
+  return parseApiResponse<T>(response, options.isValid);
 }
 
 export async function verifyCalendarPassword(
@@ -198,15 +193,21 @@ export function createBlockedTime(
 export function deleteBlockedTime(
   id: string,
   password: string,
-): Promise<DeleteBlockedTimeResponse | void> {
-  return adminRequest<DeleteBlockedTimeResponse | void>(
+): Promise<DeleteBlockedTimeResponse> {
+  return adminRequest<DeleteBlockedTimeResponse>(
     'blocked-times',
     password,
     {
       method: 'DELETE',
       key: 'id',
       value: id,
-      allowNoContent: true,
+      isValid: (payload) => (
+        typeof payload === 'object' &&
+        payload !== null &&
+        !Array.isArray(payload) &&
+        typeof (payload as Record<string, unknown>).id === 'string' &&
+        (payload as Record<string, unknown>).deleted === true
+      ),
     },
   );
 }

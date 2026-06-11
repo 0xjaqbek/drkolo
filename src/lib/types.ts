@@ -218,13 +218,8 @@ function fallbackMessage(response: Response): string {
 
 export async function parseApiResponse<T>(
   response: Response,
-  allowNoContent = false,
   isValid?: (payload: unknown) => boolean,
 ): Promise<T> {
-  if (response.status === 204 && response.ok && allowNoContent) {
-    return undefined as T;
-  }
-
   const text = await response.text();
   let payload: unknown;
   let parsed = false;

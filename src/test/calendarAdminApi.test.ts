@@ -274,12 +274,33 @@ describe('calendarAdminApi', () => {
     );
   });
 
-  it('returns void for a successful 204 delete response', async () => {
+  it('rejects a successful 204 delete response', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
     const { deleteBlockedTime } = await loadClient();
 
-    await expect(deleteBlockedTime('blocked/id', password)).resolves.toBeUndefined();
+    await expect(deleteBlockedTime('blocked/id', password)).rejects.toEqual(
+      expect.objectContaining({
+        status: 204,
+        code: 'INVALID_RESPONSE',
+      }),
+    );
     expectRequest('blocked-times&id=blocked%2Fid', 'DELETE');
+  });
+
+  it.each([
+    {},
+    { id: 123, deleted: true },
+    { id: 'blocked/id', deleted: false },
+  ])('rejects a malformed delete response', async (body) => {
+    fetchMock.mockResolvedValue(jsonResponse(body));
+    const { deleteBlockedTime } = await loadClient();
+
+    await expect(deleteBlockedTime('blocked/id', password)).rejects.toEqual(
+      expect.objectContaining({
+        status: 200,
+        code: 'INVALID_RESPONSE',
+      }),
+    );
   });
 });
 
