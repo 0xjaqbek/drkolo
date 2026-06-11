@@ -263,6 +263,70 @@ describe('KalendarzAdmin query states', () => {
     ).toBeDisabled();
   });
 
+  it.each([
+    {
+      label: 'godzin pracy',
+      queryKey: ['calendar-admin', 'working-hours'],
+      startRefresh: (pending: Promise<unknown>) => {
+        apiMocks.getWorkingHours.mockReturnValue(pending);
+      },
+    },
+    {
+      label: 'wizyt',
+      queryKey: ['calendar-admin', 'appointments'],
+      startRefresh: (pending: Promise<unknown>) => {
+        apiMocks.getAppointmentsByDate.mockReturnValue(pending);
+      },
+    },
+    {
+      label: 'blokad',
+      queryKey: ['calendar-admin', 'blocked-times'],
+      startRefresh: (pending: Promise<unknown>) => {
+        apiMocks.getBlockedTimes.mockReturnValue(pending);
+      },
+    },
+  ])(
+    'disables a selected manual slot while cached $label refresh in the background',
+    async ({ queryKey, startRefresh }) => {
+      apiMocks.verifyCalendarPassword.mockResolvedValue(true);
+      apiMocks.getWorkingHours.mockResolvedValue(allWorkingHours);
+      const { queryClient } = renderWithProviders(<KalendarzAdmin />);
+      await login();
+
+      fireEvent.mouseDown(
+        screen.getByRole('tab', { name: /Dodaj z telefonu/i }),
+        { button: 0, ctrlKey: false },
+      );
+      await screen.findByText('Dodaj wizytę ręcznie');
+      const fields = screen.getAllByRole('textbox');
+      for (const [field, value] of [
+        [fields[0], 'Jan'],
+        [fields[1], '600123456'],
+        [fields[2], 'Trek'],
+        [fields[3], 'Fuel EX'],
+      ] as const) {
+        fireEvent.change(field, { target: { value } });
+      }
+      fireEvent.click(await screen.findByRole('button', { name: '23:00' }));
+      expect(
+        screen.getByRole('button', { name: 'Zapisz i zablokuj termin' }),
+      ).toBeEnabled();
+
+      const refresh = deferred<unknown>();
+      startRefresh(refresh.promise);
+      act(() => {
+        void queryClient.invalidateQueries({ queryKey });
+      });
+
+      expect(await screen.findByRole('status')).toHaveTextContent(
+        'Ładowanie dostępnych godzin',
+      );
+      expect(
+        screen.getByRole('button', { name: 'Zapisz i zablokuj termin' }),
+      ).toBeDisabled();
+    },
+  );
+
   it('logs out and explains when a protected request reports an expired session', async () => {
     apiMocks.verifyCalendarPassword.mockResolvedValue(true);
     apiMocks.getWorkingHours.mockResolvedValue(allWorkingHours);

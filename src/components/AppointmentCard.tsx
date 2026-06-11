@@ -62,11 +62,16 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
   };
 
   const handleSaveEdit = async () => {
+    const arrivalTime = `${editTime}:00`;
     try {
       await updateMutation.mutateAsync({
         id: appointment.id,
-        appointment_date: editDate,
-        arrival_time: `${editTime}:00`,
+        ...(editDate !== appointment.appointment_date
+          ? { appointment_date: editDate }
+          : {}),
+        ...(arrivalTime !== appointment.arrival_time
+          ? { arrival_time: arrivalTime }
+          : {}),
         estimated_duration_minutes: parseInt(duration, 10) || null,
         technician_note: note,
         ...(appointment.status === 'zapytanie'

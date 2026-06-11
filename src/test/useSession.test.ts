@@ -151,6 +151,10 @@ describe('useCalendarAdminSession', () => {
     queryClient.setQueryData(['calendar-admin', 'appointments', '2030-06-14'], []);
     queryClient.setQueryData(['calendar-admin', 'working-hours'], []);
     queryClient.setQueryData(['calendar-admin', 'blocked-times', '2030-06-14'], []);
+    queryClient.getMutationCache().build(queryClient, {
+      mutationKey: ['calendar-admin', 'update-appointment'],
+      mutationFn: vi.fn(),
+    });
 
     act(() => result.current.logout());
 
@@ -160,6 +164,7 @@ describe('useCalendarAdminSession', () => {
     expect(
       queryClient.getQueriesData({ queryKey: ['calendar-admin'] }),
     ).toEqual([]);
+    expect(queryClient.getMutationCache().getAll()).toEqual([]);
   });
 
   it('expires the calendar session and clears caches after a protected 401', async () => {

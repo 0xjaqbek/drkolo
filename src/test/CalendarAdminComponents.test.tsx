@@ -152,6 +152,32 @@ describe('calendar admin components', () => {
       .not.toBeInTheDocument();
   });
 
+  it('omits unchanged date and time when editing a past appointment', async () => {
+    render(
+      <AppointmentCard
+        appointment={{
+          ...appointment,
+          appointment_date: '2020-06-14',
+          status: 'potwierdzone',
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Notatka / Czas' }));
+    fireEvent.change(screen.getByPlaceholderText('Wpisz notatkę...'), {
+      target: { value: 'Sprawdzono napęd' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Zapisz' }));
+
+    await waitFor(() => {
+      expect(hookMocks.updateAppointment).toHaveBeenCalledWith({
+        id: 'appointment-id',
+        estimated_duration_minutes: 60,
+        technician_note: 'Sprawdzono napęd',
+      });
+    });
+  });
+
   it('keeps appointment editing open and reports a slot conflict', async () => {
     hookMocks.updateAppointment.mockRejectedValue(
       new ApiClientError(409, 'SLOT_TAKEN', 'Slot taken'),

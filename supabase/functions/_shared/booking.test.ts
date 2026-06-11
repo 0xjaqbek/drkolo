@@ -903,7 +903,7 @@ const calendarAdminPassword = "server-secret";
 
 const workingHoursRow = {
   id: calendarRowId,
-  day_of_week: 1,
+  day_of_week: 4,
   open_time: "10:00:00",
   close_time: "19:00:00",
   is_open: true,
@@ -942,13 +942,13 @@ function calendarDependencies(
     todayWarsaw: vi.fn().mockReturnValue("2026-06-10"),
     listWorkingHours: vi.fn().mockResolvedValue([workingHoursRow]),
     updateWorkingHours: vi.fn().mockResolvedValue(workingHoursRow),
-    listAppointments: vi.fn().mockResolvedValue([adminAppointmentRow]),
+    listAppointments: vi.fn().mockResolvedValue([]),
     listPendingAppointments: vi.fn().mockResolvedValue([
       adminAppointmentRow,
     ]),
     createAppointment: vi.fn().mockResolvedValue(adminAppointmentRow),
     updateAppointment: vi.fn().mockResolvedValue(adminAppointmentRow),
-    listBlockedTimes: vi.fn().mockResolvedValue([blockedTimeRow]),
+    listBlockedTimes: vi.fn().mockResolvedValue([]),
     createBlockedTime: vi.fn().mockResolvedValue(blockedTimeRow),
     deleteBlockedTime: vi.fn().mockResolvedValue(true),
     ...overrides,
@@ -1201,6 +1201,112 @@ describe("calendar admin route mapping", () => {
     expect(createAppointment).toHaveBeenCalledWith(
       expect.objectContaining({ arrival_time: "10:30:00" }),
     );
+  });
+
+  it("rejects manual creation when the selected weekday is closed", async () => {
+    const deps = calendarDependencies({
+      listWorkingHours: vi.fn().mockResolvedValue([
+        { ...workingHoursRow, is_open: false, open_time: null, close_time: null },
+      ]),
+    });
+    const response = await handleCalendarAdmin(
+      calendarJsonRequest("appointments", "POST", {
+        appointment_date: "2026-06-11",
+        arrival_time: "10:30",
+        customer_name: "Jan",
+        customer_phone: "+48600123456",
+        bike_manufacturer: "Trek",
+        bike_model: "Fuel EX",
+        service_note: null,
+        estimated_duration_minutes: 60,
+      }),
+      deps,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Day closed",
+      code: "DAY_CLOSED",
+    });
+    expect(deps.createAppointment).not.toHaveBeenCalled();
+  });
+
+  it("rejects manual creation when the half-hour slot overlaps a block", async () => {
+    const deps = calendarDependencies({
+      listBlockedTimes: vi.fn().mockResolvedValue([
+        { ...blockedTimeRow, start_time: "10:15:00", end_time: "10:45:00" },
+      ]),
+    });
+    const response = await handleCalendarAdmin(
+      calendarJsonRequest("appointments", "POST", {
+        appointment_date: "2026-06-11",
+        arrival_time: "10:30",
+        customer_name: "Jan",
+        customer_phone: "+48600123456",
+        bike_manufacturer: "Trek",
+        bike_model: "Fuel EX",
+        service_note: null,
+        estimated_duration_minutes: 60,
+      }),
+      deps,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Invalid slot",
+      code: "INVALID_SLOT",
+    });
+    expect(deps.createAppointment).not.toHaveBeenCalled();
+  });
+
+  it("rejects manual creation against a stale active appointment", async () => {
+    const deps = calendarDependencies({
+      listAppointments: vi.fn().mockResolvedValue([adminAppointmentRow]),
+    });
+    const response = await handleCalendarAdmin(
+      calendarJsonRequest("appointments", "POST", {
+        appointment_date: "2026-06-11",
+        arrival_time: "10:30",
+        customer_name: "Jan",
+        customer_phone: "+48600123456",
+        bike_manufacturer: "Trek",
+        bike_model: "Fuel EX",
+        service_note: null,
+        estimated_duration_minutes: 60,
+      }),
+      deps,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Slot taken",
+      code: "SLOT_TAKEN",
+    });
+    expect(deps.createAppointment).not.toHaveBeenCalled();
+  });
+
+  it("rejects manual creation outside the working-hour window", async () => {
+    const deps = calendarDependencies();
+    const response = await handleCalendarAdmin(
+      calendarJsonRequest("appointments", "POST", {
+        appointment_date: "2026-06-11",
+        arrival_time: "19:00",
+        customer_name: "Jan",
+        customer_phone: "+48600123456",
+        bike_manufacturer: "Trek",
+        bike_model: "Fuel EX",
+        service_note: null,
+        estimated_duration_minutes: 60,
+      }),
+      deps,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Invalid slot",
+      code: "INVALID_SLOT",
+    });
+    expect(deps.createAppointment).not.toHaveBeenCalled();
   });
 
   it("maps PATCH appointments with only the update allowlist", async () => {
@@ -1473,6 +1579,35 @@ describe("calendar admin validation and errors", () => {
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({ code });
     expect(deps.updateAppointment).not.toHaveBeenCalled();
+  });
+
+  it("allows status, duration, and notes to change without revalidating a past date", async () => {
+    const updateAppointment = vi.fn().mockResolvedValue({
+      ...adminAppointmentRow,
+      appointment_date: "2026-06-09",
+      status: "zakonczone",
+      estimated_duration_minutes: 90,
+      technician_note: "Finished",
+    });
+    const response = await handleCalendarAdmin(
+      calendarJsonRequest(
+        `appointments&id=${calendarRowId}`,
+        "PATCH",
+        {
+          status: "zakonczone",
+          estimated_duration_minutes: 90,
+          technician_note: " Finished ",
+        },
+      ),
+      calendarDependencies({ updateAppointment }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(updateAppointment).toHaveBeenCalledWith(calendarRowId, {
+      status: "zakonczone",
+      estimated_duration_minutes: 90,
+      technician_note: "Finished",
+    });
   });
 
   it.each([

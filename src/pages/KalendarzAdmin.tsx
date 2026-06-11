@@ -93,24 +93,36 @@ export default function KalendarzAdmin() {
   const pendingAppointments = pendingAppointmentsQuery.data;
 
   const dayQueriesLoading = workingHoursQuery.isLoading ||
+    workingHoursQuery.isFetching ||
     appointmentsQuery.isLoading ||
-    blockedTimesQuery.isLoading;
+    appointmentsQuery.isFetching ||
+    blockedTimesQuery.isLoading ||
+    blockedTimesQuery.isFetching;
   const dayQueriesError = workingHoursQuery.error ??
     appointmentsQuery.error ??
     blockedTimesQuery.error;
   const dayQueriesReady = workingHoursQuery.isSuccess &&
+    !workingHoursQuery.isFetching &&
     appointmentsQuery.isSuccess &&
-    blockedTimesQuery.isSuccess;
+    !appointmentsQuery.isFetching &&
+    blockedTimesQuery.isSuccess &&
+    !blockedTimesQuery.isFetching;
 
   const manualQueriesLoading = workingHoursQuery.isLoading ||
+    workingHoursQuery.isFetching ||
     manualAppointmentsQuery.isLoading ||
-    manualBlockedTimesQuery.isLoading;
+    manualAppointmentsQuery.isFetching ||
+    manualBlockedTimesQuery.isLoading ||
+    manualBlockedTimesQuery.isFetching;
   const manualQueriesError = workingHoursQuery.error ??
     manualAppointmentsQuery.error ??
     manualBlockedTimesQuery.error;
   const manualQueriesReady = workingHoursQuery.isSuccess &&
+    !workingHoursQuery.isFetching &&
     manualAppointmentsQuery.isSuccess &&
-    manualBlockedTimesQuery.isSuccess;
+    !manualAppointmentsQuery.isFetching &&
+    manualBlockedTimesQuery.isSuccess &&
+    !manualBlockedTimesQuery.isFetching;
   
   const createMutation = useCreateAppointment();
 

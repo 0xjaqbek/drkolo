@@ -61,6 +61,7 @@ export function useCalendarAdminSession() {
       setAuthenticated(false);
       setError(calendarSessionExpiredError());
       queryClient.removeQueries({ queryKey: ['calendar-admin'] });
+      queryClient.getMutationCache().clear();
     };
     window.addEventListener(
       CALENDAR_ADMIN_SESSION_EXPIRED,
@@ -139,6 +140,7 @@ export function useCalendarAdminSession() {
     setAuthenticated(false);
     setError(null);
     queryClient.removeQueries({ queryKey: ['calendar-admin'] });
+    queryClient.getMutationCache().clear();
   };
 
   return {

@@ -361,6 +361,71 @@ function validateManualAppointment(
   };
 }
 
+function calendarDayOfWeek(date: string): number {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+}
+
+function timeToMinutes(time: string): number {
+  const match = /^(\d{2}):(\d{2}):(\d{2})$/.exec(time);
+  if (!match) {
+    throw new Error("Invalid persisted time");
+  }
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+async function validateManualAppointmentAvailability(
+  appointment: ManualAppointmentInput,
+  deps: CalendarAdminDatabaseDependencies,
+): Promise<void> {
+  const workingHours = await deps.listWorkingHours();
+  const dayHours = workingHours.find(
+    (row) => row.day_of_week ===
+      calendarDayOfWeek(appointment.appointment_date),
+  );
+
+  if (
+    !dayHours?.is_open ||
+    dayHours.open_time === null ||
+    dayHours.close_time === null
+  ) {
+    throw requestProblem("Day closed", "DAY_CLOSED");
+  }
+
+  const openMinutes = timeToMinutes(dayHours.open_time);
+  const closeMinutes = timeToMinutes(dayHours.close_time);
+  if (closeMinutes <= openMinutes) {
+    throw requestProblem("Day closed", "DAY_CLOSED");
+  }
+
+  const slotStart = timeToMinutes(appointment.arrival_time);
+  const slotEnd = slotStart + 30;
+  if (slotStart < openMinutes || slotEnd > closeMinutes) {
+    throw requestProblem("Invalid slot", "INVALID_SLOT");
+  }
+
+  const [appointments, blockedTimes] = await Promise.all([
+    deps.listAppointments(appointment.appointment_date),
+    deps.listBlockedTimes(appointment.appointment_date),
+  ]);
+
+  const overlapsBlock = blockedTimes.some((blockedTime) => (
+    slotStart < timeToMinutes(blockedTime.end_time) &&
+    slotEnd > timeToMinutes(blockedTime.start_time)
+  ));
+  if (overlapsBlock) {
+    throw requestProblem("Invalid slot", "INVALID_SLOT");
+  }
+
+  const slotTaken = appointments.some((existingAppointment) => (
+    existingAppointment.status !== "odrzucone" &&
+    existingAppointment.arrival_time === appointment.arrival_time
+  ));
+  if (slotTaken) {
+    throw requestProblem("Slot taken", "SLOT_TAKEN", 409);
+  }
+}
+
 function validateAppointmentUpdate(
   value: unknown,
   todayWarsaw: string,
@@ -617,6 +682,7 @@ export async function handleCalendarAdmin(
             await readBoundedJson(req),
             deps.todayWarsaw(),
           );
+          await validateManualAppointmentAvailability(appointment, deps);
           const row = await runAppointmentMutation(
             () => deps.createAppointment(appointment),
           );
