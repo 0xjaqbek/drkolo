@@ -249,7 +249,11 @@ const Cennik = () => {
         <div className="container flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <Logo className="h-7" />
           <div>{ADDRESS} · {PHONE}</div>
-          <div>© {new Date().getFullYear()} Dr Koło. Wszelkie prawa zastrzeżone.</div>
+          <div className="flex items-center gap-3">
+            <span>© {new Date().getFullYear()} Dr Koło</span>
+            <span className="text-border">·</span>
+            <Link to="/polityka-prywatnosci" className="hover:text-accent transition-colors">Polityka prywatności</Link>
+          </div>
         </div>
       </footer>
     </div>

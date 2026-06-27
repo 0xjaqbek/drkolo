@@ -14,6 +14,7 @@ import ChatAdmin from "./pages/ChatAdmin.tsx";
 import Kwestionariusz from "./pages/Kwestionariusz.tsx";
 import KwestionariuszOdp from "./pages/KwestionariuszOdp.tsx";
 import Analytics from "./pages/Analytics.tsx";
+import PolitykaPrywatnosci from "./pages/PolitykaPrywatnosci.tsx";
 import { ChatWidget } from "./components/ChatWidget.tsx";
 import { usePageView } from "./hooks/usePageView.ts";
 
@@ -33,6 +34,7 @@ const AppRoutes = () => {
       <Route path="/kwestionariusz" element={<Kwestionariusz />} />
       <Route path="/kwestionariusz-odp" element={<KwestionariuszOdp />} />
       <Route path="/analytics" element={<Analytics />} />
+      <Route path="/polityka-prywatnosci" element={<PolitykaPrywatnosci />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

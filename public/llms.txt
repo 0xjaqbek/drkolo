@@ -57,14 +57,12 @@ Gdańsk, Kartuzy i okolice (Trójmiasto, Pomorze).
 
 ## API
 
-Dr Koło exposes a REST API for AI agents and third-party applications.
+Dr Koło udostępnia REST API dla agentów AI i aplikacji zewnętrznych.
 
-Full OpenAPI 3.1 spec: https://drkolo.pl/openapi.json
-ChatGPT plugin manifest: https://drkolo.pl/.well-known/ai-plugin.json
+Specyfikacja OpenAPI 3.1: https://drkolo.pl/openapi.json
+Manifest ChatGPT: https://drkolo.pl/.well-known/ai-plugin.json
 
-All endpoints require the Supabase anon key as `Authorization: Bearer <key>`:
-`eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmdHl2dnltbHNkZXJjbXlhZ3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMjE4MDUsImV4cCI6MjA5Mzc5NzgwNX0.TC2OIWB_NQVXEJXdp3XiIYTAJ3zMhfvioD-_9DDjUUY`
-
+Uwierzytelnianie: Bearer token (klucz anon) — patrz securitySchemes w /openapi.json.
 Base URL: https://iftyvvymlsdercmyagpe.supabase.co/functions/v1
 
 ### Endpoints

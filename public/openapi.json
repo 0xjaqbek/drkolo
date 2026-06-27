@@ -249,7 +249,7 @@
         "type": "apiKey",
         "in": "header",
         "name": "Authorization",
-        "description": "Supabase anon key as 'Bearer <key>'. Public key — safe to use client-side."
+        "description": "Supabase anon key. Send as: Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmdHl2dnltbHNkZXJjbXlhZ3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMjE4MDUsImV4cCI6MjA5Mzc5NzgwNX0.TC2OIWB_NQVXEJXdp3XiIYTAJ3zMhfvioD-_9DDjUUY"
       }
     }
   }

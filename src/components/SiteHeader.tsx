@@ -59,11 +59,9 @@ export const SiteHeader = ({ activePage }: SiteHeaderProps) => {
             </>
           )}
           
-          {/* TODO: re-enable when booking is ready
           <Button asChild size="sm" variant="outline" className="hidden lg:inline-flex border-accent text-accent hover:bg-accent hover:text-accent-foreground rounded-full">
             <Link to="/rezerwacja">Umów wizytę</Link>
           </Button>
-          */}
         </nav>
 
         {/* Right controls */}
@@ -127,11 +125,9 @@ export const SiteHeader = ({ activePage }: SiteHeaderProps) => {
               <Link to="/#kontakt" onClick={close} className={linkClass}>Kontakt</Link>
             </>
           )}
-          {/* TODO: re-enable when booking is ready
           <Link to="/rezerwacja" onClick={close} className="block py-3 text-sm font-bold text-accent border-b border-border/50">
             Umów wizytę
           </Link>
-          */}
           <div className="flex items-center justify-between pt-3 mt-1 border-t border-border">
             <ThemeToggle />
             <Button

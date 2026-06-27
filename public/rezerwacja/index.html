@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Umów wizytę — Dr Koło: Serwis Rowerowy Gdańsk</title>
+    <meta name="description" content="Zarezerwuj wizytę w serwisie rowerowym Dr Koło w Gdańsku. Wybierz datę i godzinę online — oddzwonimy i potwierdzimy termin. Tel. 511 061 221." />
+    <meta name="robots" content="index, follow" />
+
+    <link rel="canonical" href="https://drkolo.pl/rezerwacja" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pl_PL" />
+    <meta property="og:site_name" content="Dr Koło" />
+    <meta property="og:url" content="https://drkolo.pl/rezerwacja" />
+    <meta property="og:title" content="Umów wizytę — Dr Koło: Serwis Rowerowy Gdańsk" />
+    <meta property="og:description" content="Zarezerwuj wizytę w serwisie rowerowym Dr Koło w Gdańsku. Wybierz datę i godzinę online — oddzwonimy i potwierdzimy termin." />
+    <meta property="og:image" content="https://drkolo.pl/og-image.jpg" />
+  </head>
+  <body>
+    <div id="root">
+      <!-- Static fallback for crawlers that do not execute JavaScript -->
+      <header>
+        <a href="/">Dr Koło — Serwis Rowerowy Gdańsk</a>
+        <nav>
+          <a href="/">Strona główna</a>
+          <a href="/cennik">Cennik</a>
+          <a href="/rezerwacja">Rezerwacja</a>
+        </nav>
+      </header>
+      <main>
+        <h1>Umów wizytę w serwisie rowerowym Dr Koło</h1>
+        <p>Zarezerwuj termin wizyty w naszym serwisie rowerowym w Gdańsku. Wybierz datę i godzinę, opisz usterkę, a my oddzwonimy i potwierdzimy termin.</p>
+
+        <h2>Jak umówić wizytę?</h2>
+        <ol>
+          <li><strong>Wybierz datę</strong> — wybierz dogodny dzień z kalendarza.</li>
+          <li><strong>Wybierz godzinę</strong> — dostępne sloty co 30 minut w godzinach pracy serwisu.</li>
+          <li><strong>Podaj dane i opis usterki</strong> — imię, telefon, marka i model roweru, opis problemu.</li>
+          <li><strong>Potwierdzenie</strong> — oddzwonimy do Ciebie, aby potwierdzić termin wizyty.</li>
+        </ol>
+
+        <h2>Godziny pracy serwisu</h2>
+        <ul>
+          <li>Poniedziałek – Piątek: 10:00 – 19:00</li>
+          <li>Sobota: 10:00 – 16:00</li>
+          <li>Niedziela: zamknięte</li>
+        </ul>
+
+        <h2>Wolisz zadzwonić?</h2>
+        <p>Możesz umówić wizytę telefonicznie: <a href="tel:+48511061221">511 061 221</a></p>
+
+        <h2>Kontakt</h2>
+        <address>
+          <p>Dr Koło Serwis Rowerowy</p>
+          <p>ul. Kielnieńska 111, 80-299 Gdańsk</p>
+          <p>Tel.: <a href="tel:+48511061221">511 061 221</a></p>
+          <p>Cennik usług: <a href="/cennik">drkolo.pl/cennik</a></p>
+        </address>
+      </main>
+    </div>
+    <script>
+      // SPA redirect: load the React app from root
+      var l = window.location;
+      if (l.pathname !== '/') {
+        var s = document.createElement('script');
+        s.type = 'module';
+        s.src = '/src/main.tsx';
+        document.body.appendChild(s);
+      }
+    </script>
+  </body>
+</html>
