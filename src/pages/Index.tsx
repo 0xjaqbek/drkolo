@@ -320,7 +320,7 @@ const Index = () => {
               {/* Embedded Google Map */}
               <div className="px-4 pb-4">
                 <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2321.5!2d18.56827!3d54.38975!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x924f3a97b3e7d4ec!2sDr+Ko%C5%82o!5e0!3m2!1spl!2spl!4v1"
+                  src="https://maps.google.com/maps?q=Dr+Ko%C5%82o+Kielnie%C5%84ska+111+Gda%C5%84sk&t=&z=15&ie=UTF8&iwloc=&output=embed"
                   width="100%"
                   height="180"
                   style={{ border: 0, borderRadius: "0.25rem", opacity: 0.85 }}
