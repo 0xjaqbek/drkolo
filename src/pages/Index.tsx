@@ -41,7 +41,7 @@ const Index = () => {
         <div className="absolute inset-0 grain opacity-40" />
 
         {/* Social icons — top left */}
-        <div className="absolute top-20 left-6 md:left-8 z-10 flex flex-row gap-2.5">
+        <div className="absolute top-20 left-6 md:left-8 z-20 flex flex-row gap-2.5">
           <a
             href="https://www.facebook.com/profile.php?id=61588984934581"
             target="_blank"

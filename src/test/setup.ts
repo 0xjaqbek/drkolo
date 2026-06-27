@@ -6,6 +6,12 @@ global.ResizeObserver = class ResizeObserver {
   disconnect() {}
 };
 
+global.IntersectionObserver = class IntersectionObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+} as typeof IntersectionObserver;
+
 Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: (query: string) => ({
