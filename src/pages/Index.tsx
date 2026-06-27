@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Logo } from "@/components/Logo";
 import { useInView } from "@/hooks/useInView";
-import heroImg from "@/assets/hero-bike.jpg";
+const heroImg = "/hero-bike.jpg";
 import mechanicImg from "@/assets/service-mechanic.jpg";
 
 const PHONE = "511 061 221";
@@ -285,37 +285,52 @@ const Index = () => {
             </a>
 
             {/* Gdańsk address card */}
-            <a
-              href="https://maps.google.com/?q=Kielnieńska+111+Gdańsk"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group flex flex-col p-10 md:p-14 bg-primary dark:bg-background border-t-2 border-accent/40 hover:border-accent transition-colors duration-300"
-            >
-              <MapPin className="h-7 w-7 mb-8 text-accent opacity-70" />
-              <div className="text-xs font-medium opacity-60 uppercase tracking-[0.2em] mb-3">Gdańsk</div>
-              <div
-                className="font-display font-bold leading-none tracking-[-0.02em] mb-2"
-                style={{ fontSize: "clamp(1.25rem, 3vw, 2rem)" }}
+            <div className="flex flex-col bg-primary dark:bg-background border-t-2 border-accent/40">
+              <a
+                href="https://www.google.com/maps?cid=10548225081155555452"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex flex-col p-10 md:p-14 pb-6"
               >
-                Kielnieńska 111
-              </div>
-              <div className="text-base opacity-70 mb-8">Gdańsk 80-299</div>
-
-              <div className="divide-y divide-white/10 mb-8">
-                <div className="flex items-center gap-3 py-3 opacity-80">
-                  <Clock className="h-4 w-4 text-accent flex-shrink-0" />
-                  <span className="text-sm">Pon – Pt: 10:00 – 19:00</span>
+                <MapPin className="h-7 w-7 mb-8 text-accent opacity-70" />
+                <div className="text-xs font-medium opacity-60 uppercase tracking-[0.2em] mb-3">Gdańsk</div>
+                <div
+                  className="font-display font-bold leading-none tracking-[-0.02em] mb-2"
+                  style={{ fontSize: "clamp(1.25rem, 3vw, 2rem)" }}
+                >
+                  Kielnieńska 111
                 </div>
-                <div className="flex items-center gap-3 py-3 opacity-80">
-                  <Clock className="h-4 w-4 text-accent flex-shrink-0" />
-                  <span className="text-sm">Sobota: 10:00 – 16:00</span>
-                </div>
-              </div>
+                <div className="text-base opacity-70 mb-8">Gdańsk 80-299</div>
 
-              <div className="mt-auto text-sm font-medium text-accent opacity-70 group-hover:opacity-100 transition-opacity tracking-wide">
-                Otwórz w mapach →
+                <div className="divide-y divide-white/10 mb-4">
+                  <div className="flex items-center gap-3 py-3 opacity-80">
+                    <Clock className="h-4 w-4 text-accent flex-shrink-0" />
+                    <span className="text-sm">Pon – Pt: 10:00 – 19:00</span>
+                  </div>
+                  <div className="flex items-center gap-3 py-3 opacity-80">
+                    <Clock className="h-4 w-4 text-accent flex-shrink-0" />
+                    <span className="text-sm">Sobota: 10:00 – 16:00</span>
+                  </div>
+                </div>
+
+                <div className="text-sm font-medium text-accent opacity-70 group-hover:opacity-100 transition-opacity tracking-wide">
+                  Otwórz w mapach →
+                </div>
+              </a>
+              {/* Embedded Google Map */}
+              <div className="px-4 pb-4">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2321.5!2d18.56827!3d54.38975!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x924f3a97b3e7d4ec!2sDr+Ko%C5%82o!5e0!3m2!1spl!2spl!4v1"
+                  width="100%"
+                  height="180"
+                  style={{ border: 0, borderRadius: "0.25rem", opacity: 0.85 }}
+                  allowFullScreen={false}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Dr Koło — mapa lokalizacji Gdańsk"
+                ></iframe>
               </div>
-            </a>
+            </div>
 
             {/* Kartuzy pickup card */}
             <a

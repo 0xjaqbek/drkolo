@@ -1,6 +1,7 @@
 # Dr Koło
 
 > Profesjonalny serwis rowerowy w Gdańsku i Kartuzach, Polska.
+> Pełna wersja z zakresami usług: https://drkolo.pl/llms-full.txt
 
 Dr Koło to serwis rowerowy specjalizujący się w naprawie i serwisowaniu rowerów każdego typu — MTB, szosowych, gravel, miejskich, dziecięcych i elektrycznych — oraz w serwisie amortyzatorów i tylnych zawieszeń.
 

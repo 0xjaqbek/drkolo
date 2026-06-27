@@ -1,3 +1,22 @@
+/* Font fallback metrics to reduce FOUT CLS */
+@font-face {
+  font-family: 'Cormorant Garamond Fallback';
+  src: local('Georgia');
+  ascent-override: 90%;
+  descent-override: 25%;
+  line-gap-override: 0%;
+  size-adjust: 105%;
+}
+
+@font-face {
+  font-family: 'DM Sans Fallback';
+  src: local('Segoe UI'), local('system-ui');
+  ascent-override: 94%;
+  descent-override: 26%;
+  line-gap-override: 0%;
+  size-adjust: 100%;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

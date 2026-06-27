@@ -1,0 +1,138 @@
+# Dr Koło — Pełna dokumentacja serwisu
+
+> Profesjonalny serwis rowerowy w Gdańsku i Kartuzach, Polska.
+> Patrz: https://drkolo.pl/llms.txt (wersja skrócona)
+
+## Kontakt
+
+- Telefon: 511 061 221
+- Adres główny: Kielnieńska 111, Gdańsk 80-299
+- Punkt odbioru: Słowackiego 36, Kartuzy (wcześniejszy kontakt telefoniczny wymagany)
+- Strona: https://drkolo.pl
+- Google Maps: https://www.google.com/maps?cid=10548225081155555452
+- Facebook: https://www.facebook.com/profile.php?id=61588984934581
+- Instagram: https://www.instagram.com/drkolo_serwis/
+
+## Godziny otwarcia (Gdańsk)
+
+- Poniedziałek – Piątek: 10:00 – 19:00
+- Sobota: 10:00 – 16:00
+- Niedziela: zamknięte
+
+## Przeglądy — szczegółowy zakres
+
+### Przegląd generalny Full Suspension — 649 zł
+
+Co wchodzi w zakres przeglądu Full Suspension w serwisie Dr Koło:
+- Regulacja przerzutek
+- Regulacja hamulców (odpowietrzanie, regulacja zacisków, mycie zacisków, sprawdzenie stanu klocków, mycie klocków)
+- Mycie napędu i smarowanie łańcucha
+- Kasacja luzów (stery, piasty, ramiona korb, pedały)
+- Sprawdzenie łożysk w piastach kół
+- Pompowanie kół (sprawdzenie czy jest mleko)
+- Czyszczenie sterów
+- Przegląd suportu
+- Przegląd pancerzy i linek hamulcowych oraz przerzutkowych
+- Sprawdzenie śrub mostka
+- Przegląd i czyszczenie ISOSPEED
+- Przegląd i czyszczenie łożysk wahaczy i dampera
+
+### Przegląd generalny hardtail — 449 zł
+
+Co wchodzi w zakres przeglądu hardtail w serwisie Dr Koło:
+- Regulacja przerzutek
+- Regulacja hamulców (odpowietrzanie, regulacja zacisków)
+- Mycie i smarowanie łańcucha
+- Kasacja luzów (stery, piasty, ramiona korb, pedały)
+- Pompowanie kół (sprawdzenie czy jest mleko)
+- Sprawdzenie śrub mostka
+- Centrowanie kół (dociągnięcie szprych)
+
+### Przegląd podstawowy — 249 zł
+
+Co wchodzi w zakres przeglądu podstawowego w serwisie Dr Koło:
+- Regulacja przerzutek
+- Regulacja hamulców (odpowietrzanie, regulacja zacisków)
+- Mycie i smarowanie łańcucha
+- Kasacja luzów (stery, piasty, ramiona korb, pedały)
+- Pompowanie kół (sprawdzenie czy jest mleko)
+- Sprawdzenie śrub mostka
+
+## Zawieszenie
+
+- Duży serwis zawieszenia: 400 zł
+- Mały serwis zawieszenia: 200 zł
+
+## Napęd
+
+- Założenie łańcucha + regulacja przerzutki: 80 zł
+- Mycie napędu: 80 zł
+- Regulacja przerzutki: 50 zł
+
+## Koła
+
+- Montaż systemu tubeless: 150 zł
+- Zmiana opony tubeless: 50 zł
+- Centrowanie koła: 50 zł
+- Dolanie uszczelniacza: 40 zł
+- Wymiana dętki: 30 zł
+
+## Hamulce i diagnostyka
+
+- Diagnostyka Bosch: 200 zł
+- Serwis hamulca: 50 zł
+- Prostowanie haka przerzutki: 30 zł
+
+## Obsługiwane typy rowerów
+
+Dr Koło serwisuje wszystkie typy rowerów:
+- Górskie MTB (hardtail i full suspension)
+- Szosowe
+- Gravel
+- Miejskie
+- Dziecięce
+- Elektryczne (e-bike)
+
+Specjalizacja: serwis amortyzatorów przednich i tylnych zawieszeń, diagnostyka Bosch dla rowerów elektrycznych.
+
+## Często zadawane pytania
+
+### Ile kosztuje serwis roweru w Gdańsku?
+W serwisie Dr Koło w Gdańsku przegląd podstawowy roweru kosztuje 249 zł. Przegląd generalny hardtail to 449 zł, a Full Suspension 649 zł. Drobniejsze usługi: regulacja przerzutki 50 zł, wymiana dętki 30 zł, serwis hamulca 50 zł, centrowanie koła 50 zł.
+
+### Gdzie jest serwis rowerowy Dr Koło w Gdańsku?
+Dr Koło mieści się przy ul. Kielnieńskiej 111 w Gdańsku (80-299). Posiadamy też punkt odbioru w Kartuzach przy ul. Słowackiego 36. Kontakt telefoniczny: 511 061 221.
+
+### Jak umówić wizytę w serwisie rowerowym Dr Koło?
+Wizytę można zarezerwować online na stronie drkolo.pl/rezerwacja — wystarczy wybrać datę, godzinę i opisać usterkę. Serwis oddzwoni, aby potwierdzić termin. Można też zadzwonić bezpośrednio: 511 061 221.
+
+### Jakie rowery naprawia serwis Dr Koło?
+Dr Koło serwisuje wszystkie typy rowerów: górskie MTB, szosowe, gravel, miejskie, dziecięce i elektryczne. Specjalizujemy się w serwisie amortyzatorów przednich i tylnych zawieszeń, a także wykonujemy diagnostykę Bosch dla rowerów elektrycznych.
+
+### Jakie są godziny otwarcia serwisu rowerowego Dr Koło?
+Serwis Dr Koło w Gdańsku jest czynny od poniedziałku do piątku w godzinach 10:00–19:00 oraz w soboty 10:00–16:00. W niedzielę serwis jest nieczynny.
+
+## Rezerwacja
+
+Wizyty można rezerwować online: https://drkolo.pl/rezerwacja
+
+## Polityka prywatności
+
+https://drkolo.pl/polityka-prywatnosci
+
+## API
+
+Dr Koło udostępnia REST API dla agentów AI i aplikacji zewnętrznych.
+
+Specyfikacja OpenAPI 3.1: https://drkolo.pl/openapi.json
+Manifest ChatGPT: https://drkolo.pl/.well-known/ai-plugin.json
+
+Uwierzytelnianie: Bearer token (klucz anon) — patrz securitySchemes w /openapi.json.
+Base URL: https://iftyvvymlsdercmyagpe.supabase.co/functions/v1
+
+### Endpoints
+
+- GET /availability?date=YYYY-MM-DD — dostępne 30-min sloty na daną datę
+- GET /services — katalog usług z cenami w PLN
+- POST /appointments — utworzenie zapytania o rezerwację (serwis oddzwania do klienta)
+- GET /appointments?phone=+48... — sprawdzenie statusu rezerwacji po numerze telefonu

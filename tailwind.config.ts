@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['"DM Sans"', 'system-ui', 'sans-serif'],
-        display: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+        sans: ['"DM Sans"', '"DM Sans Fallback"', 'system-ui', 'sans-serif'],
+        display: ['"Cormorant Garamond"', '"Cormorant Garamond Fallback"', 'Georgia', 'serif'],
       },
       backgroundImage: {
         'gradient-hero': 'var(--gradient-hero)',

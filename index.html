@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <!-- Synchronous dark mode to prevent FOUC/CLS -->
+    <script>
+      (function() {
+        var stored = localStorage.getItem('theme');
+        var isDark = stored ? stored === 'dark' : true;
+        if (isDark) document.documentElement.classList.add('dark');
+      })();
+    </script>
+
     <title>Dr Koło — Profesjonalny Serwis Rowerowy | Gdańsk · Kartuzy</title>
     <meta name="description" content="Dr Koło — profesjonalny serwis rowerowy w Gdańsku i Kartuzach. Naprawa rowerów MTB, szosowych, gravel, elektrycznych. Serwis amortyzatorów. Tel. 511 061 221." />
     <meta name="author" content="Dr Koło" />
@@ -55,11 +64,26 @@
             "postalCode": "80-299",
             "addressCountry": "PL"
           },
-          "openingHours": [
-            "Mo-Fr 10:00-19:00",
-            "Sa 10:00-16:00"
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 54.38975,
+            "longitude": 18.56827
+          },
+          "openingHoursSpecification": [
+            {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+              "opens": "10:00",
+              "closes": "19:00"
+            },
+            {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": "Saturday",
+              "opens": "10:00",
+              "closes": "16:00"
+            }
           ],
-          "hasMap": "https://maps.google.com/?q=Kielnieńska+111+Gdańsk",
+          "hasMap": "https://www.google.com/maps?cid=10548225081155555452",
           "areaServed": [
             { "@type": "City", "name": "Gdańsk" },
             { "@type": "City", "name": "Kartuzy" },
@@ -67,23 +91,23 @@
           ],
           "priceRange": "$$",
           "currenciesAccepted": "PLN",
+          "paymentAccepted": "Cash, Credit Card",
           "hasOfferCatalog": {
             "@type": "OfferCatalog",
             "name": "Usługi serwisu rowerowego",
             "itemListElement": [
-              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Przegląd roweru" } },
-              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Naprawa roweru" } },
-              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Serwis amortyzatorów" } },
-              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Centrowanie kół" } },
-              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Regulacja przerzutek i hamulców" } }
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Przegląd generalny Full Suspension" }, "price": "649", "priceCurrency": "PLN" },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Przegląd generalny hardtail" }, "price": "449", "priceCurrency": "PLN" },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Przegląd podstawowy" }, "price": "249", "priceCurrency": "PLN" },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Duży serwis zawieszenia" }, "price": "400", "priceCurrency": "PLN" },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Mały serwis zawieszenia" }, "price": "200", "priceCurrency": "PLN" },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Diagnostyka Bosch" }, "price": "200", "priceCurrency": "PLN" },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Montaż systemu tubeless" }, "price": "150", "priceCurrency": "PLN" },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Regulacja przerzutki" }, "price": "50", "priceCurrency": "PLN" },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Serwis hamulca" }, "price": "50", "priceCurrency": "PLN" },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Centrowanie koła" }, "price": "50", "priceCurrency": "PLN" },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Wymiana dętki" }, "price": "30", "priceCurrency": "PLN" }
             ]
-          },
-          "aggregateRating": {
-            "@type": "AggregateRating",
-            "ratingValue": "5.0",
-            "reviewCount": "1",
-            "bestRating": "5",
-            "worstRating": "1"
           },
           "sameAs": [
             "https://www.google.com/maps?cid=10548225081155555452",
@@ -95,6 +119,8 @@
           "@type": ["LocalBusiness", "BicycleStore"],
           "@id": "https://drkolo.pl/#kartuzy",
           "name": "Dr Koło — Kartuzy",
+          "url": "https://drkolo.pl",
+          "image": "https://drkolo.pl/og-image.jpg",
           "branchOf": { "@id": "https://drkolo.pl/#business" },
           "telephone": "+48511061221",
           "address": {
@@ -104,9 +130,22 @@
             "postalCode": "83-300",
             "addressCountry": "PL"
           },
-          "description": "Punkt odbioru i dowóz rowerów w Kartuzach. Wymagany wcześniejszy kontakt telefoniczny."
+          "description": "Punkt odbioru i dowóz rowerów w Kartuzach. Wymagany wcześniejszy kontakt telefoniczny.",
+          "hasMap": "https://maps.google.com/?q=Słowackiego+36+Kartuzy"
         }
       ]
+    }
+    </script>
+    <!-- JSON-LD: WebSite -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "@id": "https://drkolo.pl/#website",
+      "name": "Dr Koło",
+      "url": "https://drkolo.pl",
+      "inLanguage": "pl",
+      "publisher": { "@id": "https://drkolo.pl/#business" }
     }
     </script>
     <!-- JSON-LD: FAQ -->
@@ -158,6 +197,9 @@
       ]
     }
     </script>
+    <!-- Preload LCP hero image -->
+    <link rel="preload" as="image" href="/hero-bike.jpg" fetchpriority="high" />
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
