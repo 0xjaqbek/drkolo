@@ -82,7 +82,7 @@
       "post": {
         "operationId": "createAppointment",
         "summary": "Book a service appointment",
-        "description": "Creates an appointment inquiry. The shop will call the customer at the provided phone number to confirm. Status will be 'zapytanie' (inquiry) until confirmed by shop.",
+        "description": "Creates an appointment inquiry. The shop will call the customer to confirm. Rate limits: max 3 attempts per phone per day, max 5 per IP per hour, max 50 AI bookings per day globally. Constraints: max 3 active bookings per phone, no duplicate same-phone+date, max 14 days in advance.",
         "requestBody": {
           "required": true,
           "content": {
@@ -115,6 +115,10 @@
           },
           "409": {
             "description": "Time slot unavailable",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "429": {
+            "description": "Rate limit exceeded (per-phone, per-IP, or global daily limit)",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
           }
         },

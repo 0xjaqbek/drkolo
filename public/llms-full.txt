@@ -162,7 +162,17 @@ Base URL: https://iftyvvymlsdercmyagpe.supabase.co/functions/v1
 
 ### Endpoints
 
-- GET /availability?date=YYYY-MM-DD — dostępne 30-min sloty na daną datę
-- GET /services — katalog usług z cenami w PLN
-- POST /appointments — utworzenie zapytania o rezerwację (serwis oddzwania do klienta)
-- GET /appointments?phone=+48... — sprawdzenie statusu rezerwacji po numerze telefonu
+- GET /availability?date=YYYY-MM-DD — available 30-min slots for a date
+- GET /services — service catalog with PLN prices
+- POST /appointments — create booking inquiry (shop calls customer to confirm)
+- GET /appointments?phone=+48... — look up appointment status by phone
+
+### Limity i ograniczenia
+
+- Maks. 3 próby rezerwacji na numer telefonu dziennie
+- Maks. 5 żądań na adres IP na godzinę
+- Maks. 50 rezerwacji AI dziennie (globalnie)
+- Maks. 3 aktywne rezerwacje na numer telefonu
+- Nie można zarezerwować dwóch wizyt na ten sam numer telefonu w tym samym dniu
+- Rezerwacja możliwa maks. 14 dni do przodu
+- Przy przekroczeniu limitu odpowiedź 429 z kodem błędu
