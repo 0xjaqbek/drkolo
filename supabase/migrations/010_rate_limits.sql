@@ -19,13 +19,9 @@ returns void as $$
   delete from booking_rate_limits where created_at < now() - interval '24 hours';
 $$ language sql;
 
--- Schedule cleanup every hour (requires pg_cron extension)
--- Supabase projects have pg_cron enabled by default.
-select cron.schedule(
-  'cleanup-rate-limits',
-  '0 * * * *',
-  $$ select cleanup_old_rate_limits() $$
-);
+-- To schedule automatic cleanup, enable pg_cron in Supabase Dashboard
+-- (Database → Extensions → pg_cron) then run:
+-- select cron.schedule('cleanup-rate-limits', '0 * * * *', $$ select cleanup_old_rate_limits() $$);
 
 -- RLS: no direct access for anon
 alter table booking_rate_limits enable row level security;
