@@ -45,14 +45,14 @@ begin
     and existing.appointment_date + existing.arrival_time
       < candidate.appointment_date + candidate.arrival_time
         + pg_catalog.make_interval(
-          mins => pg_catalog.coalesce(
+          mins => coalesce(
             candidate.estimated_duration_minutes,
             60
           )
         )
     and existing.appointment_date + existing.arrival_time
         + pg_catalog.make_interval(
-          mins => pg_catalog.coalesce(
+          mins => coalesce(
             existing.estimated_duration_minutes,
             60
           )
@@ -79,12 +79,12 @@ begin
       select
         existing.appointment_date,
         existing.arrival_time as existing_time,
-        pg_catalog.coalesce(
+        coalesce(
           existing.estimated_duration_minutes,
           60
         ) as existing_duration,
         candidate.arrival_time as candidate_time,
-        pg_catalog.coalesce(
+        coalesce(
           candidate.estimated_duration_minutes,
           60
         ) as candidate_duration
@@ -97,14 +97,14 @@ begin
         and existing.appointment_date + existing.arrival_time
           < candidate.appointment_date + candidate.arrival_time
             + pg_catalog.make_interval(
-              mins => pg_catalog.coalesce(
+              mins => coalesce(
                 candidate.estimated_duration_minutes,
                 60
               )
             )
         and existing.appointment_date + existing.arrival_time
             + pg_catalog.make_interval(
-              mins => pg_catalog.coalesce(
+              mins => coalesce(
                 existing.estimated_duration_minutes,
                 60
               )
@@ -259,7 +259,7 @@ as $function$
               and candidate.slot_start
                 < appointment.appointment_date + appointment.arrival_time
                   + pg_catalog.make_interval(
-                    mins => pg_catalog.coalesce(
+                    mins => coalesce(
                       appointment.estimated_duration_minutes,
                       60
                     )
@@ -389,7 +389,7 @@ begin
       and v_slot_start
         < appointment.appointment_date + appointment.arrival_time
           + pg_catalog.make_interval(
-            mins => pg_catalog.coalesce(
+            mins => coalesce(
               appointment.estimated_duration_minutes,
               60
             )
@@ -517,7 +517,7 @@ begin
     extract(dow from p_appointment_date)::integer;
 
   if not found
-    or not pg_catalog.coalesce(v_is_open, false)
+    or not coalesce(v_is_open, false)
     or v_open_time is null
     or v_close_time is null
     or v_close_time <= v_open_time
@@ -569,7 +569,7 @@ begin
       and v_slot_start
         < appointment.appointment_date + appointment.arrival_time
           + pg_catalog.make_interval(
-            mins => pg_catalog.coalesce(
+            mins => coalesce(
               appointment.estimated_duration_minutes,
               60
             )
@@ -734,7 +734,7 @@ begin
         is distinct from v_existing.estimated_duration_minutes
     );
 
-  if pg_catalog.coalesce(v_scheduling_change, false) then
+  if coalesce(v_scheduling_change, false) then
     if v_target_status is null
       or v_target_status not in (
         'zapytanie',
@@ -755,7 +755,7 @@ begin
         errcode = 'DRK02',
         message = 'invalid slot';
     end if;
-    v_effective_duration := pg_catalog.coalesce(v_target_duration, 60);
+    v_effective_duration := coalesce(v_target_duration, 60);
 
     if v_target_date is null then
       raise exception using
@@ -781,7 +781,7 @@ begin
       extract(dow from v_target_date)::integer;
 
     if not found
-      or not pg_catalog.coalesce(v_is_open, false)
+      or not coalesce(v_is_open, false)
       or v_open_time is null
       or v_close_time is null
       or v_close_time <= v_open_time
@@ -835,7 +835,7 @@ begin
           and v_slot_start
             < appointment.appointment_date + appointment.arrival_time
               + pg_catalog.make_interval(
-                mins => pg_catalog.coalesce(
+                mins => coalesce(
                   appointment.estimated_duration_minutes,
                   60
                 )

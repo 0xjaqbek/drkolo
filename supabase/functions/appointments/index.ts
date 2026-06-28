@@ -478,8 +478,9 @@ export function getWarsawDate(now = new Date()): string {
 }
 
 if (typeof Deno !== "undefined" && typeof Deno.serve === "function") {
-  const supabaseModule = "npm:@supabase/supabase-js@2";
-  const { createClient } = await import(/* @vite-ignore */ supabaseModule);
+  const { createClient } = await import(
+    "https://esm.sh/@supabase/supabase-js@2"
+  );
   const client = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
