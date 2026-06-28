@@ -112,6 +112,36 @@ Dr Koło serwisuje wszystkie typy rowerów: górskie MTB, szosowe, gravel, miejs
 ### Jakie są godziny otwarcia serwisu rowerowego Dr Koło?
 Serwis Dr Koło w Gdańsku jest czynny od poniedziałku do piątku w godzinach 10:00–19:00 oraz w soboty 10:00–16:00. W niedzielę serwis jest nieczynny.
 
+### Jak długo trwa przegląd roweru?
+Przegląd podstawowy zajmuje zazwyczaj 1–2 dni robocze. Przegląd generalny hardtail lub Full Suspension może potrwać 2–3 dni, w zależności od stanu roweru i dostępności części. W sezonie letnim czas oczekiwania może się wydłużyć — warto rezerwować termin z wyprzedzeniem.
+
+### Czy mogę przyjść bez rezerwacji?
+Tak, przyjmujemy rowery bez wcześniejszej rezerwacji w godzinach otwarcia. Jednak zalecamy rezerwację online lub telefoniczną, aby zagwarantować termin i skrócić czas oczekiwania, szczególnie w sezonie wiosenno-letnim.
+
+### Co wchodzi w zakres przeglądu generalnego roweru?
+Przegląd generalny obejmuje: regulację przerzutek i hamulców (w tym odpowietrzanie), mycie i smarowanie napędu, kasację luzów (stery, piasty, korby, pedały), sprawdzenie łożysk, pompowanie kół, sprawdzenie uszczelniacza, przegląd pancerzy i linek oraz sprawdzenie śrub mostka. W wersji Full Suspension dodatkowo: czyszczenie sterów, przegląd suportu, czyszczenie ISOSPEED oraz przegląd łożysk wahaczy i dampera.
+
+### Ile kosztuje serwis amortyzatora rowerowego?
+Mały serwis zawieszenia (wymiana oleju, uszczelniaczy) kosztuje 200 zł, a duży serwis zawieszenia (pełna regeneracja z wymianą wszystkich elementów eksploatacyjnych) to 400 zł. Cena nie obejmuje części zamiennych, jeśli wymagają wymiany.
+
+### Czy serwisujecie rowery elektryczne (e-bike)?
+Tak, serwisujemy rowery elektryczne wszystkich marek. Oferujemy diagnostykę systemów Bosch (200 zł), a także pełen zakres usług mechanicznych — przeglądy, hamulce, napęd, koła. Część elektryczna wymaga diagnostyki przed wyceną naprawy.
+
+### Jak często powinienem robić przegląd roweru?
+Zalecamy przegląd podstawowy co najmniej raz w sezonie (wiosną przed sezonem). Jeśli jeździsz intensywnie (MTB, gravel, dojazdy codzienne), przegląd co 3–6 miesięcy pozwoli uniknąć kosztownych napraw. Full Suspension wymaga serwisu zawieszenia co 100–150 godzin jazdy.
+
+### Czy oferujecie montaż systemu tubeless?
+Tak, montaż systemu tubeless kosztuje 150 zł (obejmuje taśmę, wentyle i uszczelniacz). Zmiana opony tubeless to 50 zł, a dolanie uszczelniacza 40 zł. Tubeless zmniejsza ryzyko przebić i poprawia przyczepność — polecamy szczególnie do MTB i gravel.
+
+### Czy naprawiacie rowery z Decathlonu i innych marketów?
+Tak, serwisujemy rowery wszystkich marek i pochodzenia — zarówno markowe, jak i marketowe. Każdy rower zasługuje na profesjonalną obsługę. Wycena naprawy zależy od zakresu prac, nie od marki roweru.
+
+### Czy mogę zostawić rower w serwisie na dłużej?
+Tak, rower może zostać w serwisie do czasu zakończenia naprawy. W przypadku oczekiwania na części lub dłuższych napraw przechowujemy rower bezpłatnie. Prosimy o odbiór w ciągu 7 dni od powiadomienia o zakończeniu serwisu.
+
+### Jakie formy płatności akceptujecie?
+Akceptujemy gotówkę oraz karty płatnicze (Visa, Mastercard). Płatność następuje przy odbiorze roweru po zakończeniu serwisu.
+
 ## Rezerwacja
 
 Wizyty można rezerwować online: https://drkolo.pl/rezerwacja

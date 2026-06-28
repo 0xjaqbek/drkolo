@@ -1,6 +1,7 @@
-import { Phone, MapPin, Wrench, Bike, Cog, Clock, ShieldCheck, ChevronDown } from "lucide-react";
+import { Phone, MapPin, Wrench, Bike, Cog, Clock, ShieldCheck, ChevronDown, HelpCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Logo } from "@/components/Logo";
 import { useInView } from "@/hooks/useInView";
@@ -11,10 +12,29 @@ const PHONE = "511 061 221";
 const PHONE_TEL = "+48511061221";
 const ADDRESS = "Kielnieńska 111, Gdańsk 80-299";
 
+const faqItems = [
+  { q: "Ile kosztuje serwis roweru w Gdańsku?", a: "W serwisie Dr Koło w Gdańsku przegląd podstawowy roweru kosztuje 249 zł. Przegląd generalny hardtail to 449 zł, a Full Suspension 649 zł. Drobniejsze usługi: regulacja przerzutki 50 zł, wymiana dętki 30 zł, serwis hamulca 50 zł, centrowanie koła 50 zł." },
+  { q: "Gdzie jest serwis rowerowy Dr Koło w Gdańsku?", a: "Dr Koło mieści się przy ul. Kielnieńskiej 111 w Gdańsku (80-299). Posiadamy też punkt odbioru w Kartuzach przy ul. Słowackiego 36. Kontakt telefoniczny: 511 061 221." },
+  { q: "Jak umówić wizytę w serwisie rowerowym Dr Koło?", a: "Wizytę można zarezerwować online na stronie drkolo.pl/rezerwacja — wystarczy wybrać datę, godzinę i opisać usterkę. Serwis oddzwoni, aby potwierdzić termin. Można też zadzwonić bezpośrednio: 511 061 221." },
+  { q: "Jakie rowery naprawia serwis Dr Koło?", a: "Dr Koło serwisuje wszystkie typy rowerów: górskie MTB, szosowe, gravel, miejskie, dziecięce i elektryczne. Specjalizujemy się w serwisie amortyzatorów przednich i tylnych zawieszeń, a także wykonujemy diagnostykę Bosch dla rowerów elektrycznych." },
+  { q: "Jakie są godziny otwarcia serwisu rowerowego Dr Koło?", a: "Serwis Dr Koło w Gdańsku jest czynny od poniedziałku do piątku w godzinach 10:00–19:00 oraz w soboty 10:00–16:00. W niedzielę serwis jest nieczynny." },
+  { q: "Jak długo trwa przegląd roweru?", a: "Przegląd podstawowy zajmuje zazwyczaj 1–2 dni robocze. Przegląd generalny hardtail lub Full Suspension może potrwać 2–3 dni, w zależności od stanu roweru i dostępności części. W sezonie letnim czas oczekiwania może się wydłużyć — warto rezerwować termin z wyprzedzeniem." },
+  { q: "Czy mogę przyjść bez rezerwacji?", a: "Tak, przyjmujemy rowery bez wcześniejszej rezerwacji w godzinach otwarcia. Jednak zalecamy rezerwację online lub telefoniczną, aby zagwarantować termin i skrócić czas oczekiwania, szczególnie w sezonie wiosenno-letnim." },
+  { q: "Co wchodzi w zakres przeglądu generalnego roweru?", a: "Przegląd generalny obejmuje: regulację przerzutek i hamulców (w tym odpowietrzanie), mycie i smarowanie napędu, kasację luzów (stery, piasty, korby, pedały), sprawdzenie łożysk, pompowanie kół, sprawdzenie uszczelniacza, przegląd pancerzy i linek oraz sprawdzenie śrub mostka. W wersji Full Suspension dodatkowo: czyszczenie sterów, przegląd suportu, czyszczenie ISOSPEED oraz przegląd łożysk wahaczy i dampera." },
+  { q: "Ile kosztuje serwis amortyzatora rowerowego?", a: "Mały serwis zawieszenia (wymiana oleju, uszczelniaczy) kosztuje 200 zł, a duży serwis zawieszenia (pełna regeneracja z wymianą wszystkich elementów eksploatacyjnych) to 400 zł. Cena nie obejmuje części zamiennych, jeśli wymagają wymiany." },
+  { q: "Czy serwisujecie rowery elektryczne (e-bike)?", a: "Tak, serwisujemy rowery elektryczne wszystkich marek. Oferujemy diagnostykę systemów Bosch (200 zł), a także pełen zakres usług mechanicznych — przeglądy, hamulce, napęd, koła. Część elektryczna wymaga diagnostyki przed wyceną naprawy." },
+  { q: "Jak często powinienem robić przegląd roweru?", a: "Zalecamy przegląd podstawowy co najmniej raz w sezonie (wiosną przed sezonem). Jeśli jeździsz intensywnie (MTB, gravel, dojazdy codzienne), przegląd co 3–6 miesięcy pozwoli uniknąć kosztownych napraw. Full Suspension wymaga serwisu zawieszenia co 100–150 godzin jazdy." },
+  { q: "Czy oferujecie montaż systemu tubeless?", a: "Tak, montaż systemu tubeless kosztuje 150 zł (obejmuje taśmę, wentyle i uszczelniacz). Zmiana opony tubeless to 50 zł, a dolanie uszczelniacza 40 zł. Tubeless zmniejsza ryzyko przebić i poprawia przyczepność — polecamy szczególnie do MTB i gravel." },
+  { q: "Czy naprawiacie rowery z Decathlonu i innych marketów?", a: "Tak, serwisujemy rowery wszystkich marek i pochodzenia — zarówno markowe, jak i marketowe. Każdy rower zasługuje na profesjonalną obsługę. Wycena naprawy zależy od zakresu prac, nie od marki roweru." },
+  { q: "Czy mogę zostawić rower w serwisie na dłużej?", a: "Tak, rower może zostać w serwisie do czasu zakończenia naprawy. W przypadku oczekiwania na części lub dłuższych napraw przechowujemy rower bezpłatnie. Prosimy o odbiór w ciągu 7 dni od powiadomienia o zakończeniu serwisu." },
+  { q: "Jakie formy płatności akceptujecie?", a: "Akceptujemy gotówkę oraz karty płatnicze (Visa, Mastercard). Płatność następuje przy odbiorze roweru po zakończeniu serwisu." },
+];
+
 const Index = () => {
   const servicesRef = useInView<HTMLDivElement>();
   const aboutImgRef = useInView<HTMLDivElement>();
   const aboutTextRef = useInView<HTMLDivElement>(0.1);
+  const faqRef = useInView<HTMLElement>(0.1);
   const contactRef = useInView<HTMLElement>(0.1);
 
   const services = [
@@ -244,6 +264,38 @@ const Index = () => {
               ))}
             </ul>
           </div>
+        </div>
+      </section>
+
+      {/* ─── FAQ ─────────────────────────────────────────── */}
+      <section
+        id="faq"
+        ref={faqRef}
+        className="reveal py-24 md:py-36"
+      >
+        <div className="container max-w-3xl">
+          <div className="text-center mb-16">
+            <div className="section-label mb-5">FAQ</div>
+            <h2
+              className="font-display font-bold text-balance leading-[0.95] tracking-[-0.02em]"
+              style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)" }}
+            >
+              Często zadawane <em className="italic font-normal">pytania</em>
+            </h2>
+          </div>
+
+          <Accordion type="single" collapsible className="w-full">
+            {faqItems.map((item, i) => (
+              <AccordionItem key={i} value={`faq-${i}`} className="border-border/50">
+                <AccordionTrigger className="text-left text-base font-medium hover:no-underline hover:text-accent transition-colors py-5 gap-4">
+                  {item.q}
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground leading-relaxed text-[0.95rem]">
+                  {item.a}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </div>
       </section>
 
