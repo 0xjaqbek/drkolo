@@ -125,29 +125,40 @@
         "security": [{ "anonKey": [] }]
       },
       "get": {
-        "operationId": "getAppointments",
-        "summary": "Look up appointments by customer phone",
-        "description": "Returns all appointments for the given phone number, most recent first. Use this to check the status of a booking.",
+        "operationId": "getAppointment",
+        "summary": "Look up a single appointment by phone and lookup token",
+        "description": "Returns the appointment matching the phone number and lookup token. The lookup_token is returned when creating a booking — store it to check status later.",
         "parameters": [
           {
-            "name": "phone",
-            "in": "query",
+            "name": "X-Customer-Phone",
+            "in": "header",
             "required": true,
             "description": "Customer phone number (e.g. +48600123456)",
             "schema": { "type": "string", "example": "+48600123456" }
+          },
+          {
+            "name": "X-Lookup-Token",
+            "in": "header",
+            "required": true,
+            "description": "Lookup token returned from POST /appointments",
+            "schema": { "type": "string" }
           }
         ],
         "responses": {
           "200": {
-            "description": "Appointments for the phone number",
+            "description": "Appointment details",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/AppointmentsResponse" }
+                "schema": { "$ref": "#/components/schemas/AppointmentResponse" }
               }
             }
           },
           "400": {
-            "description": "Missing phone parameter",
+            "description": "Missing phone or token header",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "404": {
+            "description": "Appointment not found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
           }
         },
@@ -212,32 +223,25 @@
         "properties": {
           "id": { "type": "string" },
           "status": { "type": "string", "enum": ["zapytanie"] },
+          "lookup_token": { "type": "string", "description": "Store this token to look up appointment status later via GET /appointments" },
           "message": { "type": "string" }
         }
       },
-      "AppointmentsResponse": {
+      "AppointmentResponse": {
         "type": "object",
         "properties": {
-          "appointments": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": { "type": "string" },
-                "date": { "type": "string" },
-                "time": { "type": "string" },
-                "status": {
-                  "type": "string",
-                  "enum": ["zapytanie", "potwierdzone", "odrzucone", "zakonczone"],
-                  "description": "zapytanie=inquiry, potwierdzone=confirmed, odrzucone=rejected, zakonczone=completed"
-                },
-                "bike_manufacturer": { "type": "string" },
-                "bike_model": { "type": "string" },
-                "service_note": { "type": ["string", "null"] },
-                "created_at": { "type": "string" }
-              }
-            }
-          }
+          "id": { "type": "string" },
+          "date": { "type": "string" },
+          "time": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["zapytanie", "potwierdzone", "odrzucone", "zakonczone"],
+            "description": "zapytanie=inquiry, potwierdzone=confirmed, odrzucone=rejected, zakonczone=completed"
+          },
+          "bike_manufacturer": { "type": "string" },
+          "bike_model": { "type": "string" },
+          "service_note": { "type": ["string", "null"] },
+          "created_at": { "type": "string" }
         }
       },
       "Error": {

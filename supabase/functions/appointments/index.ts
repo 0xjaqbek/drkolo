@@ -49,6 +49,9 @@ export interface AppointmentsDependencies {
     phoneNormalized: string,
     lookupTokenHash: string,
   ): Promise<PublicAppointmentRow | null>;
+  checkRateLimits(phone: string, ip: string): Promise<void>;
+  checkBookingConstraints(phoneNormalized: string, date: string): Promise<void>;
+  recordBookingAttempt(phone: string, ip: string): Promise<void>;
 }
 
 interface AppointmentRpcResult {
@@ -65,16 +68,27 @@ interface AppointmentRpcClient {
 
 export type AppointmentStore = Pick<
   AppointmentsDependencies,
-  "createAppointment" | "getAppointment"
+  "createAppointment" | "getAppointment" | "checkRateLimits" | "checkBookingConstraints" | "recordBookingAttempt"
 >;
+
+const MAX_BOOKINGS_PER_PHONE_PER_DAY = 3;
+const MAX_BOOKINGS_PER_IP_PER_HOUR = 5;
+const MAX_AI_BOOKINGS_PER_DAY = 50;
+const MAX_ACTIVE_PER_PHONE = 3;
+const MAX_ADVANCE_DAYS = 14;
 
 function databaseProblem(): ApiProblem {
   return new ApiProblem("DB_ERROR", 500, "DB_ERROR");
 }
 
+// deno-lint-ignore no-explicit-any
+type SupabaseClient = any;
+
 export function createAppointmentStore(
   client: AppointmentRpcClient,
+  fullClient?: SupabaseClient,
 ): AppointmentStore {
+  const db = fullClient ?? client;
   return {
     async createAppointment(
       appointment: CreateAppointmentInput,
@@ -119,7 +133,90 @@ export function createAppointmentStore(
 
       return (data?.[0] as PublicAppointmentRow | undefined) ?? null;
     },
+
+    async checkRateLimits(phone: string, ip: string): Promise<void> {
+      const now = new Date();
+      const oneDayAgo = new Date(now.getTime() - 86400000).toISOString();
+      const oneHourAgo = new Date(now.getTime() - 3600000).toISOString();
+
+      const { count: phoneCount } = await db
+        .from("booking_rate_limits")
+        .select("*", { count: "exact", head: true })
+        .eq("phone", phone)
+        .gte("created_at", oneDayAgo);
+
+      if ((phoneCount ?? 0) >= MAX_BOOKINGS_PER_PHONE_PER_DAY) {
+        throw new ApiProblem("RATE_LIMIT_PHONE", 429,
+          `Maximum ${MAX_BOOKINGS_PER_PHONE_PER_DAY} booking attempts per phone per day.`);
+      }
+
+      if (ip !== "unknown") {
+        const { count: ipCount } = await db
+          .from("booking_rate_limits")
+          .select("*", { count: "exact", head: true })
+          .eq("ip_address", ip)
+          .gte("created_at", oneHourAgo);
+
+        if ((ipCount ?? 0) >= MAX_BOOKINGS_PER_IP_PER_HOUR) {
+          throw new ApiProblem("RATE_LIMIT_IP", 429,
+            "Too many requests from this IP. Try again later.");
+        }
+      }
+
+      const { count: globalCount } = await db
+        .from("booking_rate_limits")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", oneDayAgo);
+
+      if ((globalCount ?? 0) >= MAX_AI_BOOKINGS_PER_DAY) {
+        throw new ApiProblem("RATE_LIMIT_GLOBAL", 429,
+          "Daily booking limit reached. Please call 511 061 221 to book.");
+      }
+    },
+
+    async checkBookingConstraints(
+      phoneNormalized: string,
+      date: string,
+    ): Promise<void> {
+      const { count: activeCount } = await db
+        .from("service_appointments")
+        .select("*", { count: "exact", head: true })
+        .eq("customer_phone_normalized", phoneNormalized)
+        .in("status", ["zapytanie", "potwierdzone"]);
+
+      if ((activeCount ?? 0) >= MAX_ACTIVE_PER_PHONE) {
+        throw new ApiProblem("MAX_ACTIVE_REACHED", 400,
+          `Maximum ${MAX_ACTIVE_PER_PHONE} active bookings per phone number.`);
+      }
+
+      const { count: dupCount } = await db
+        .from("service_appointments")
+        .select("*", { count: "exact", head: true })
+        .eq("customer_phone_normalized", phoneNormalized)
+        .eq("appointment_date", date)
+        .in("status", ["zapytanie", "potwierdzone"]);
+
+      if ((dupCount ?? 0) > 0) {
+        throw new ApiProblem("DUPLICATE_DATE", 409,
+          "You already have a booking for this date. Call 511 061 221 for changes.");
+      }
+    },
+
+    async recordBookingAttempt(phone: string, ip: string): Promise<void> {
+      await db.from("booking_rate_limits").insert({
+        phone,
+        ip_address: ip,
+      });
+    },
   };
+}
+
+function getClientIp(req: Request): string {
+  return (
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("x-real-ip") ||
+    "unknown"
+  );
 }
 
 function isJsonContentType(value: string | null): boolean {
@@ -233,6 +330,29 @@ async function handlePost(
 
   try {
     const appointment = validateCreateAppointment(body, deps.todayWarsaw());
+
+    // Advance booking window check
+    const today = new Date(deps.todayWarsaw() + "T00:00:00");
+    const bookingDate = new Date(appointment.date + "T00:00:00");
+    const diffDays = Math.floor(
+      (bookingDate.getTime() - today.getTime()) / 86400000,
+    );
+    if (diffDays > MAX_ADVANCE_DAYS) {
+      throw new ApiProblem(
+        "TOO_FAR_AHEAD",
+        400,
+        `Bookings can be made up to ${MAX_ADVANCE_DAYS} days in advance. Call 511 061 221 for later dates.`,
+      );
+    }
+
+    // Rate limiting & booking constraints
+    const clientIp = getClientIp(req);
+    await deps.checkRateLimits(appointment.customer_phone, clientIp);
+    await deps.checkBookingConstraints(
+      appointment.customer_phone_normalized,
+      appointment.date,
+    );
+
     const token = deps.generateLookupToken();
     const lookupTokenHash = await deps.hashLookupToken(token);
     const created = await deps.createAppointment({
@@ -240,12 +360,16 @@ async function handlePost(
       lookup_token_hash: lookupTokenHash,
     });
 
+    // Record successful attempt for rate tracking
+    await deps.recordBookingAttempt(appointment.customer_phone, clientIp);
+
     return json(
       {
         id: created.id,
         status: created.status,
         lookup_token: token,
-        message: "Appointment inquiry created. The shop will call to confirm.",
+        message:
+          "Rezerwacja utworzona. Serwis oddzwoni w celu potwierdzenia.",
       },
       201,
     );
@@ -361,7 +485,7 @@ if (typeof Deno !== "undefined" && typeof Deno.serve === "function") {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     { auth: { persistSession: false } },
   );
-  const store = createAppointmentStore(client);
+  const store = createAppointmentStore(client, client);
   const dependencies: AppointmentsDependencies = {
     ...store,
     todayWarsaw: () => getWarsawDate(),

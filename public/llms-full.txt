@@ -164,8 +164,8 @@ Base URL: https://iftyvvymlsdercmyagpe.supabase.co/functions/v1
 
 - GET /availability?date=YYYY-MM-DD — available 30-min slots for a date
 - GET /services — service catalog with PLN prices
-- POST /appointments — create booking inquiry (shop calls customer to confirm)
-- GET /appointments?phone=+48... — look up appointment status by phone
+- POST /appointments — create booking inquiry (returns lookup_token; shop calls customer to confirm)
+- GET /appointments — look up appointment status (requires X-Customer-Phone and X-Lookup-Token headers)
 
 ### Limity i ograniczenia
 
