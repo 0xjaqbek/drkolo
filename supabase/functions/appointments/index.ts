@@ -5,6 +5,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// --- Rate limit configuration ---
+const MAX_BOOKINGS_PER_PHONE_PER_DAY = 3;
+const MAX_BOOKINGS_PER_IP_PER_HOUR = 5;
+const MAX_AI_BOOKINGS_PER_DAY = 50;
+const MAX_ACTIVE_PER_PHONE = 3;
+const MAX_ADVANCE_DAYS = 14;
+
 function jsonError(message: string, code: string, status: number): Response {
   return new Response(JSON.stringify({ error: message, code }), {
     status,
@@ -24,6 +31,119 @@ function generateSlots(openTime: string, closeTime: string): string[] {
     if (m >= 60) { h++; m -= 60; }
   }
   return slots;
+}
+
+function getClientIp(req: Request): string {
+  return (
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    req.headers.get('x-real-ip') ||
+    'unknown'
+  );
+}
+
+async function checkRateLimits(
+  supabase: ReturnType<typeof createClient>,
+  phone: string,
+  ip: string,
+): Promise<Response | null> {
+  const now = new Date();
+  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+
+  // Check per-phone daily limit
+  const { count: phoneCount } = await supabase
+    .from('booking_rate_limits')
+    .select('*', { count: 'exact', head: true })
+    .eq('phone', phone)
+    .gte('created_at', oneDayAgo);
+
+  if ((phoneCount ?? 0) >= MAX_BOOKINGS_PER_PHONE_PER_DAY) {
+    return jsonError(
+      `Maximum ${MAX_BOOKINGS_PER_PHONE_PER_DAY} booking attempts per phone per day. Try again tomorrow.`,
+      'RATE_LIMIT_PHONE', 429,
+    );
+  }
+
+  // Check per-IP hourly limit
+  if (ip !== 'unknown') {
+    const { count: ipCount } = await supabase
+      .from('booking_rate_limits')
+      .select('*', { count: 'exact', head: true })
+      .eq('ip_address', ip)
+      .gte('created_at', oneHourAgo);
+
+    if ((ipCount ?? 0) >= MAX_BOOKINGS_PER_IP_PER_HOUR) {
+      return jsonError(
+        `Too many requests from this IP. Try again later.`,
+        'RATE_LIMIT_IP', 429,
+      );
+    }
+  }
+
+  // Check global AI agent daily limit
+  const { count: globalCount } = await supabase
+    .from('booking_rate_limits')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', oneDayAgo);
+
+  if ((globalCount ?? 0) >= MAX_AI_BOOKINGS_PER_DAY) {
+    return jsonError(
+      'Daily booking limit reached. Please call 511 061 221 to book.',
+      'RATE_LIMIT_GLOBAL', 429,
+    );
+  }
+
+  return null;
+}
+
+async function checkBookingConstraints(
+  supabase: ReturnType<typeof createClient>,
+  phone: string,
+  date: string,
+): Promise<Response | null> {
+  // Max active bookings per phone
+  const { count: activeCount } = await supabase
+    .from('service_appointments')
+    .select('*', { count: 'exact', head: true })
+    .eq('customer_phone', phone)
+    .in('status', ['zapytanie', 'potwierdzone']);
+
+  if ((activeCount ?? 0) >= MAX_ACTIVE_PER_PHONE) {
+    return jsonError(
+      `Maximum ${MAX_ACTIVE_PER_PHONE} active bookings per phone number. Cancel or complete existing bookings first.`,
+      'MAX_ACTIVE_REACHED', 400,
+    );
+  }
+
+  // No duplicate: same phone + same date
+  const { count: dupCount } = await supabase
+    .from('service_appointments')
+    .select('*', { count: 'exact', head: true })
+    .eq('customer_phone', phone)
+    .eq('appointment_date', date)
+    .in('status', ['zapytanie', 'potwierdzone']);
+
+  if ((dupCount ?? 0) > 0) {
+    return jsonError(
+      'You already have a booking for this date. Choose a different date or call 511 061 221.',
+      'DUPLICATE_DATE', 409,
+    );
+  }
+
+  // Max 14 days in advance
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const bookingDate = new Date(date + 'T00:00:00');
+  const diffDays = Math.floor((bookingDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays > MAX_ADVANCE_DAYS) {
+    return jsonError(
+      `Bookings can be made up to ${MAX_ADVANCE_DAYS} days in advance. Call 511 061 221 for later dates.`,
+      'TOO_FAR_AHEAD', 400,
+    );
+  }
+
+  return null;
 }
 
 async function handleGet(req: Request, supabase: ReturnType<typeof createClient>): Promise<Response> {
@@ -96,6 +216,16 @@ async function handlePost(req: Request, supabase: ReturnType<typeof createClient
     return jsonError('Invalid time format (HH:MM)', 'INVALID_TIME', 400);
   }
 
+  // --- Rate limiting ---
+  const clientIp = getClientIp(req);
+  const rateLimitError = await checkRateLimits(supabase, customer_phone, clientIp);
+  if (rateLimitError) return rateLimitError;
+
+  // --- Booking constraints ---
+  const constraintError = await checkBookingConstraints(supabase, customer_phone, date);
+  if (constraintError) return constraintError;
+
+  // --- Slot validation ---
   const dayOfWeek = new Date(date + 'T12:00:00Z').getUTCDay();
   const { data: wh } = await supabase
     .from('service_working_hours')
@@ -134,6 +264,13 @@ async function handlePost(req: Request, supabase: ReturnType<typeof createClient
     }
   }
 
+  // --- Record rate limit attempt ---
+  await supabase.from('booking_rate_limits').insert({
+    phone: customer_phone,
+    ip_address: clientIp,
+  });
+
+  // --- Create appointment ---
   const { data: created, error } = await supabase
     .from('service_appointments')
     .insert({
@@ -160,7 +297,7 @@ async function handlePost(req: Request, supabase: ReturnType<typeof createClient
     JSON.stringify({
       id: created.id,
       status: created.status,
-      message: `Appointment inquiry created. The shop will call you at ${customer_phone} to confirm.`,
+      message: `Rezerwacja utworzona. Serwis oddzwoni pod numer ${customer_phone} w celu potwierdzenia.`,
     }),
     { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
   );
