@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNoIndex } from "@/hooks/useNoIndex";
-import { format, isBefore, startOfDay } from 'date-fns';
+import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { SiteHeader } from '@/components/SiteHeader';
 import { TimelinePicker } from '@/components/TimelinePicker';
 import { AppointmentCard } from '@/components/AppointmentCard';
 import { WorkingHoursEditor } from '@/components/WorkingHoursEditor';
 import { BlockedTimesEditor } from '@/components/BlockedTimesEditor';
-import { useSession } from '@/hooks/useSession';
+import { useCalendarAdminSession } from '@/hooks/useSession';
+import { ApiClientError } from '@/lib/calendarAdminApi';
 import { 
   useWorkingHours, 
   useAppointmentsByDate, 
@@ -26,9 +26,25 @@ import { toast } from 'sonner';
 
 export default function KalendarzAdmin() {
   useNoIndex();
-  const { authenticated, login, logout } = useSession();
+  const {
+    authenticated,
+    error: sessionError,
+    isLoading: sessionLoading,
+    isRestoring,
+    login,
+    logout,
+  } = useCalendarAdminSession();
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState(false);
+  const sessionExpired = sessionError instanceof ApiClientError &&
+    sessionError.code === 'SESSION_EXPIRED';
+
+  useEffect(() => {
+    if (sessionExpired) {
+      setPassword('');
+      setPasswordError(false);
+    }
+  }, [sessionExpired]);
 
   // Main view state
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -47,23 +63,97 @@ export default function KalendarzAdmin() {
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
   const mDateStr = mDate ? format(mDate, 'yyyy-MM-dd') : '';
   
-  const { data: allWorkingHours } = useWorkingHours();
-  const { data: appointments = [] } = useAppointmentsByDate(selectedDateStr);
-  const { data: blockedTimes = [] } = useBlockedTimes(selectedDateStr);
+  const workingHoursQuery = useWorkingHours(authenticated);
+  const appointmentsQuery = useAppointmentsByDate(
+    selectedDateStr,
+    authenticated,
+  );
+  const blockedTimesQuery = useBlockedTimes(
+    selectedDateStr,
+    authenticated,
+  );
   
-  const { data: mAppointments = [] } = useAppointmentsByDate(mDateStr);
-  const { data: mBlockedTimes = [] } = useBlockedTimes(mDateStr);
-  const { data: pendingAppointments = [] } = usePendingAppointments();
+  const manualAppointmentsQuery = useAppointmentsByDate(
+    mDateStr,
+    authenticated,
+  );
+  const manualBlockedTimesQuery = useBlockedTimes(
+    mDateStr,
+    authenticated,
+  );
+  const pendingAppointmentsQuery = usePendingAppointments(
+    authenticated,
+  );
+
+  const allWorkingHours = workingHoursQuery.data;
+  const appointments = appointmentsQuery.data;
+  const blockedTimes = blockedTimesQuery.data;
+  const mAppointments = manualAppointmentsQuery.data;
+  const mBlockedTimes = manualBlockedTimesQuery.data;
+  const pendingAppointments = pendingAppointmentsQuery.data;
+
+  const dayQueriesLoading = workingHoursQuery.isLoading ||
+    workingHoursQuery.isFetching ||
+    appointmentsQuery.isLoading ||
+    appointmentsQuery.isFetching ||
+    blockedTimesQuery.isLoading ||
+    blockedTimesQuery.isFetching;
+  const dayQueriesError = workingHoursQuery.error ??
+    appointmentsQuery.error ??
+    blockedTimesQuery.error;
+  const dayQueriesReady = workingHoursQuery.isSuccess &&
+    !workingHoursQuery.isFetching &&
+    appointmentsQuery.isSuccess &&
+    !appointmentsQuery.isFetching &&
+    blockedTimesQuery.isSuccess &&
+    !blockedTimesQuery.isFetching;
+
+  const manualQueriesLoading = workingHoursQuery.isLoading ||
+    workingHoursQuery.isFetching ||
+    manualAppointmentsQuery.isLoading ||
+    manualAppointmentsQuery.isFetching ||
+    manualBlockedTimesQuery.isLoading ||
+    manualBlockedTimesQuery.isFetching;
+  const manualQueriesError = workingHoursQuery.error ??
+    manualAppointmentsQuery.error ??
+    manualBlockedTimesQuery.error;
+  const manualQueriesReady = workingHoursQuery.isSuccess &&
+    !workingHoursQuery.isFetching &&
+    manualAppointmentsQuery.isSuccess &&
+    !manualAppointmentsQuery.isFetching &&
+    manualBlockedTimesQuery.isSuccess &&
+    !manualBlockedTimesQuery.isFetching;
   
   const createMutation = useCreateAppointment();
 
-  const handleLogin = () => {
-    if (!login(password)) {
+  const handleLogin = async () => {
+    setPasswordError(false);
+    if (!password) {
+      setPasswordError(true);
+      return;
+    }
+    if (!await login(password)) {
       setPasswordError(true);
     }
   };
 
+  const handleLogout = () => {
+    setPassword('');
+    setPasswordError(false);
+    createMutation.reset();
+    logout();
+  };
+
+  const handleManualDateSelect = (date: Date | undefined) => {
+    setMTime(null);
+    setMDate(date);
+  };
+
   const handleCreateManual = async () => {
+    if (!manualQueriesReady) {
+      toast.error('Poczekaj na załadowanie dostępnych terminów');
+      return;
+    }
     if (!mDate || !mTime || !mName || !mPhone || !mManufacturer || !mModel) {
       toast.error('Wypełnij wszystkie wymagane pola');
       return;
@@ -72,16 +162,13 @@ export default function KalendarzAdmin() {
     try {
       await createMutation.mutateAsync({
         appointment_date: format(mDate, 'yyyy-MM-dd'),
-        arrival_time: `${mTime}:00`,
+        arrival_time: mTime,
         customer_name: mName,
         customer_phone: mPhone,
         bike_manufacturer: mManufacturer,
         bike_model: mModel,
         service_note: mNote || null,
-        status: 'potwierdzone', // manual is confirmed by default
-        source: 'manual',
         estimated_duration_minutes: parseInt(mDuration, 10),
-        technician_note: null,
       });
       
       toast.success('Dodano wizytę');
@@ -99,7 +186,21 @@ export default function KalendarzAdmin() {
     }
   };
 
+  if (isRestoring) {
+    return (
+      <div
+        role="status"
+        className="min-h-screen flex items-center justify-center p-4 text-muted-foreground"
+      >
+        Sprawdzanie sesji...
+      </div>
+    );
+  }
+
   if (!authenticated) {
+    const isWrongPassword = sessionError instanceof ApiClientError &&
+      sessionError.status === 401 &&
+      sessionError.code !== 'SESSION_EXPIRED';
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-sm space-y-4">
@@ -112,10 +213,31 @@ export default function KalendarzAdmin() {
               setPassword(e.target.value);
               setPasswordError(false);
             }}
-            onKeyDown={e => e.key === 'Enter' && handleLogin()}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !sessionLoading) {
+                void handleLogin();
+              }
+            }}
           />
-          {passwordError && <p className="text-sm text-red-500">Nieprawidłowe hasło</p>}
-          <Button className="w-full" onClick={handleLogin}>Zaloguj</Button>
+          {sessionExpired && (
+            <p role="alert" className="text-sm text-red-500">
+              Sesja wygasła. Zaloguj się ponownie.
+            </p>
+          )}
+          {passwordError && !sessionExpired && (
+            <p className="text-sm text-red-500">
+              {isWrongPassword
+                ? 'Nieprawidłowe hasło'
+                : 'Nie udało się zalogować. Spróbuj ponownie.'}
+            </p>
+          )}
+          <Button
+            className="w-full"
+            onClick={() => void handleLogin()}
+            disabled={sessionLoading || !password}
+          >
+            {sessionLoading ? 'Sprawdzanie...' : 'Zaloguj'}
+          </Button>
         </div>
       </div>
     );
@@ -131,7 +253,7 @@ export default function KalendarzAdmin() {
           <div className="flex items-center gap-2 font-display font-bold text-lg">
             <CalendarIcon className="w-5 h-5 text-accent" /> Kalendarz Serwisu
           </div>
-          <Button variant="ghost" size="sm" onClick={logout}>
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
             <LogOut className="w-4 h-4 mr-2" /> Wyloguj
           </Button>
         </div>
@@ -146,8 +268,24 @@ export default function KalendarzAdmin() {
           </TabsList>
           
           <TabsContent value="calendar" className="space-y-6">
-            
-            {pendingAppointments.length > 0 && (
+
+            {pendingAppointmentsQuery.isLoading && (
+              <QueryNotice
+                kind="loading"
+                message="Ładowanie oczekujących zapytań..."
+              />
+            )}
+            {pendingAppointmentsQuery.error && (
+              <QueryNotice
+                kind="error"
+                label="Błąd oczekujących zapytań"
+                message="Nie udało się pobrać oczekujących zapytań."
+                onRetry={() => void pendingAppointmentsQuery.refetch()}
+              />
+            )}
+            {pendingAppointmentsQuery.isSuccess &&
+              pendingAppointments &&
+              pendingAppointments.length > 0 && (
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 shadow-sm mb-6">
                 <h3 className="font-semibold text-lg text-yellow-700 flex items-center gap-2 mb-4">
                   Oczekujące zapytania ({pendingAppointments.length})
@@ -177,8 +315,10 @@ export default function KalendarzAdmin() {
                   <TimelinePicker 
                     date={selectedDate}
                     workingHours={workingHoursForSelected}
-                    appointments={appointments}
-                    blockedTimes={blockedTimes}
+                    appointments={appointments ?? []}
+                    blockedTimes={blockedTimes ?? []}
+                    isLoading={dayQueriesLoading}
+                    error={dayQueriesError}
                     selectedTime={null}
                     onSelectTime={() => {}}
                     className="opacity-80 pointer-events-none"
@@ -188,20 +328,38 @@ export default function KalendarzAdmin() {
                 <div className="space-y-4">
                   <h3 className="font-semibold text-lg flex items-center justify-between">
                     Lista wizyt
-                    <Badge count={appointments.length} />
+                    <Badge count={dayQueriesReady ? appointments?.length ?? 0 : 0} />
                   </h3>
-                  
-                  {appointments.length === 0 ? (
+
+                  {dayQueriesLoading ? (
+                    <QueryNotice
+                      kind="loading"
+                      message="Ładowanie wizyt dla wybranego dnia..."
+                    />
+                  ) : dayQueriesError ? (
+                    <QueryNotice
+                      kind="error"
+                      label="Błąd danych wybranego dnia"
+                      message="Nie udało się pobrać danych wybranego dnia."
+                      onRetry={() => {
+                        void Promise.all([
+                          workingHoursQuery.refetch(),
+                          appointmentsQuery.refetch(),
+                          blockedTimesQuery.refetch(),
+                        ]);
+                      }}
+                    />
+                  ) : dayQueriesReady && appointments?.length === 0 ? (
                     <div className="text-center p-8 bg-card border border-dashed rounded-lg text-muted-foreground">
                       Brak wizyt w tym dniu.
                     </div>
-                  ) : (
+                  ) : dayQueriesReady && appointments ? (
                     <div className="grid gap-4">
                       {appointments.map(app => (
                         <AppointmentCard key={app.id} appointment={app} />
                       ))}
                     </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -250,7 +408,7 @@ export default function KalendarzAdmin() {
                     <Calendar
                       mode="single"
                       selected={mDate}
-                      onSelect={setMDate}
+                      onSelect={handleManualDateSelect}
                       locale={pl}
                       className="rounded-md border bg-background"
                     />
@@ -262,18 +420,49 @@ export default function KalendarzAdmin() {
                       <TimelinePicker
                         date={mDate}
                         workingHours={workingHoursForM}
-                        appointments={mAppointments}
-                        blockedTimes={mBlockedTimes}
+                        appointments={mAppointments ?? []}
+                        blockedTimes={mBlockedTimes ?? []}
+                        isLoading={manualQueriesLoading ||
+                          (!manualQueriesReady && !manualQueriesError)}
+                        error={manualQueriesError}
                         selectedTime={mTime}
                         onSelectTime={setMTime}
                       />
+                      {manualQueriesError && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            void Promise.all([
+                              workingHoursQuery.refetch(),
+                              manualAppointmentsQuery.refetch(),
+                              manualBlockedTimesQuery.refetch(),
+                            ]);
+                          }}
+                        >
+                          Spróbuj ponownie
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
 
               <div className="mt-8 pt-6 border-t flex justify-end">
-                <Button size="lg" onClick={handleCreateManual} disabled={createMutation.isPending}>
+                <Button
+                  size="lg"
+                  onClick={() => void handleCreateManual()}
+                  disabled={
+                    createMutation.isPending ||
+                    !manualQueriesReady ||
+                    !mTime ||
+                    !mName ||
+                    !mPhone ||
+                    !mManufacturer ||
+                    !mModel
+                  }
+                >
                   {createMutation.isPending ? 'Dodawanie...' : 'Zapisz i zablokuj termin'}
                 </Button>
               </div>
@@ -287,7 +476,7 @@ export default function KalendarzAdmin() {
                   <h2 className="text-xl font-semibold">Godziny otwarcia</h2>
                   <p className="text-sm text-muted-foreground">Ustal w jakich godzinach serwis przyjmuje zlecenia online.</p>
                 </div>
-                <WorkingHoursEditor />
+                <WorkingHoursEditor authenticated={authenticated} />
               </div>
 
               <div className="space-y-4">
@@ -295,7 +484,7 @@ export default function KalendarzAdmin() {
                   <h2 className="text-xl font-semibold">Zablokowane terminy</h2>
                   <p className="text-sm text-muted-foreground">Dodaj przerwy (np. obiadowe), urlopy lub wyjazdy. W tych godzinach kalendarz będzie niedostępny dla klientów.</p>
                 </div>
-                <BlockedTimesEditor />
+                <BlockedTimesEditor authenticated={authenticated} />
               </div>
             </div>
           </TabsContent>
@@ -311,5 +500,36 @@ function Badge({ count }: { count: number }) {
     <span className="bg-accent text-accent-foreground text-xs font-bold px-2 py-0.5 rounded-full">
       {count}
     </span>
+  );
+}
+
+function QueryNotice({
+  kind,
+  label,
+  message,
+  onRetry,
+}: {
+  kind: 'loading' | 'error';
+  label?: string;
+  message: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <div
+      role={kind === 'loading' ? 'status' : 'alert'}
+      aria-label={label}
+      className={
+        kind === 'loading'
+          ? 'p-4 text-center text-sm text-muted-foreground'
+          : 'p-4 text-center text-sm text-destructive border border-destructive/20 rounded-lg bg-destructive/5 space-y-3'
+      }
+    >
+      <p>{message}</p>
+      {onRetry && (
+        <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+          Spróbuj ponownie
+        </Button>
+      )}
+    </div>
   );
 }

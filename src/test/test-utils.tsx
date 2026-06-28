@@ -18,7 +18,7 @@ export function renderWithProviders(
   options?: Omit<RenderOptions, 'wrapper'>
 ) {
   const queryClient = createTestQueryClient();
-  return render(
+  const result = render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[route]}>
         {ui}
@@ -26,4 +26,6 @@ export function renderWithProviders(
     </QueryClientProvider>,
     options
   );
+
+  return { ...result, queryClient };
 }

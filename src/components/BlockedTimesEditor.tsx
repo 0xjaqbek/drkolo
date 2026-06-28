@@ -7,15 +7,28 @@ import { Label } from '@/components/ui/label';
 import { Trash2, Plus, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
-export function BlockedTimesEditor() {
-  const { data: blockedTimes, isLoading } = useBlockedTimes();
-  const createMutation = useCreateBlockedTime();
-  const deleteMutation = useDeleteBlockedTime();
+interface BlockedTimesEditorProps {
+  authenticated: boolean;
+}
 
+export function BlockedTimesEditor({
+  authenticated,
+}: BlockedTimesEditorProps) {
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [startTime, setStartTime] = useState('12:00');
   const [endTime, setEndTime] = useState('13:00');
   const [reason, setReason] = useState('');
+  const {
+    data: blockedTimes,
+    error,
+    isLoading,
+    refetch,
+  } = useBlockedTimes(
+    date,
+    authenticated,
+  );
+  const createMutation = useCreateBlockedTime();
+  const deleteMutation = useDeleteBlockedTime();
 
   const handleAdd = async () => {
     if (!date || !startTime || !endTime) {
@@ -31,8 +44,8 @@ export function BlockedTimesEditor() {
     try {
       await createMutation.mutateAsync({
         block_date: date,
-        start_time: `${startTime}:00`,
-        end_time: `${endTime}:00`,
+        start_time: startTime,
+        end_time: endTime,
         reason: reason || null,
       });
       toast.success('Dodano zablokowany czas');
@@ -87,7 +100,24 @@ export function BlockedTimesEditor() {
       <div className="space-y-3">
         <h3 className="font-medium">Istniejące blokady</h3>
         {isLoading ? (
-          <div className="text-sm text-muted-foreground">Ładowanie...</div>
+          <div role="status" className="text-sm text-muted-foreground">
+            Ładowanie zablokowanych terminów...
+          </div>
+        ) : error || !blockedTimes ? (
+          <div
+            role="alert"
+            className="p-4 text-center text-sm text-destructive border border-destructive/20 rounded-lg space-y-3"
+          >
+            <p>Nie udało się pobrać zablokowanych terminów.</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void refetch()}
+            >
+              Spróbuj ponownie
+            </Button>
+          </div>
         ) : blockedTimes?.length === 0 ? (
           <div className="text-sm text-muted-foreground p-4 border border-dashed rounded-lg text-center">
             Brak zablokowanych terminów.

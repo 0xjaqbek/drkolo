@@ -1,96 +1,97 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { ApiProblem, validateCalendarDate } from "../_shared/booking.ts";
+import {
+  json,
+  jsonError,
+  methodNotAllowed,
+  preflight,
+} from "../_shared/http.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-function jsonError(message: string, code: string, status: number): Response {
-  return new Response(JSON.stringify({ error: message, code }), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+export interface AvailabilityRow {
+  requested_date: string;
+  open_time: string | null;
+  close_time: string | null;
+  slots: string[] | null;
 }
 
-function generateSlots(openTime: string, closeTime: string): string[] {
-  const slots: string[] = [];
-  const [openH, openM] = openTime.split(':').map(Number);
-  const [closeH, closeM] = closeTime.split(':').map(Number);
-  let h = openH;
-  let m = openM;
-  while (h * 60 + m < closeH * 60 + closeM) {
-    slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
-    m += 30;
-    if (m >= 60) { h++; m -= 60; }
-  }
-  return slots;
+export interface AvailabilityDependencies {
+  getAvailability(date: string): Promise<AvailabilityRow>;
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+interface AvailabilityRpcClient {
+  rpc(
+    name: string,
+    params: { p_date: string },
+  ): PromiseLike<{
+    data: AvailabilityRow[] | null;
+    error: unknown;
+  }>;
+}
+
+function formatTime(value: string | null): string | null {
+  return value === null ? null : value.slice(0, 5);
+}
+
+export function createAvailabilityDependencies(
+  client: AvailabilityRpcClient,
+): AvailabilityDependencies {
+  return {
+    async getAvailability(date: string): Promise<AvailabilityRow> {
+      const { data, error } = await client.rpc("get_public_availability", {
+        p_date: date,
+      });
+
+      if (error || !data?.[0]) {
+        throw new Error("Failed to fetch availability");
+      }
+
+      return data[0];
+    },
+  };
+}
+
+export async function handleAvailability(
+  req: Request,
+  deps: AvailabilityDependencies,
+): Promise<Response> {
+  if (req.method === "OPTIONS") {
+    return preflight();
   }
 
-  const url = new URL(req.url);
-  const date = url.searchParams.get('date');
-
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return jsonError('Missing or invalid date parameter (YYYY-MM-DD)', 'INVALID_DATE', 400);
+  if (req.method !== "GET") {
+    return methodNotAllowed();
   }
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-  );
+  const date = new URL(req.url).searchParams.get("date");
 
-  // Use noon UTC to avoid timezone-edge day_of_week shifts
-  const dayOfWeek = new Date(date + 'T12:00:00Z').getUTCDay();
+  try {
+    const validatedDate = validateCalendarDate(date);
+    const row = await deps.getAvailability(validatedDate);
 
-  const { data: wh } = await supabase
-    .from('service_working_hours')
-    .select('*')
-    .eq('day_of_week', dayOfWeek)
-    .single();
-
-  if (!wh || !wh.is_open) {
-    return new Response(
-      JSON.stringify({ date, open: null, close: null, slots: [] }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
-  }
-
-  const [{ data: appointments }, { data: blockedTimes }] = await Promise.all([
-    supabase
-      .from('service_appointments')
-      .select('arrival_time')
-      .eq('appointment_date', date)
-      .neq('status', 'odrzucone'),
-    supabase
-      .from('service_blocked_times')
-      .select('start_time, end_time')
-      .eq('block_date', date),
-  ]);
-
-  const allSlots = generateSlots(wh.open_time, wh.close_time);
-  const bookedSlots = new Set(
-    (appointments ?? []).map((a: { arrival_time: string }) => a.arrival_time.slice(0, 5)),
-  );
-
-  const available = allSlots.filter((slot) => {
-    if (bookedSlots.has(slot)) return false;
-    for (const block of (blockedTimes ?? [])) {
-      if (slot >= block.start_time.slice(0, 5) && slot < block.end_time.slice(0, 5)) return false;
+    return json({
+      date: validatedDate,
+      timezone: "Europe/Warsaw",
+      open: formatTime(row.open_time),
+      close: formatTime(row.close_time),
+      slots: row.slots ?? [],
+    });
+  } catch (error) {
+    if (error instanceof ApiProblem) {
+      return jsonError(error.message, error.code, error.status);
     }
-    return true;
-  });
 
-  return new Response(
-    JSON.stringify({
-      date,
-      open: wh.open_time.slice(0, 5),
-      close: wh.close_time.slice(0, 5),
-      slots: available,
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    return jsonError("Failed to fetch availability", "DB_ERROR", 500);
+  }
+}
+
+if (typeof Deno !== "undefined" && typeof Deno.serve === "function") {
+  const supabaseModule = "npm:@supabase/supabase-js@2";
+  const { createClient } = await import(/* @vite-ignore */ supabaseModule);
+  const client = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    { auth: { persistSession: false } },
   );
-});
+  const dependencies = createAvailabilityDependencies(client);
+
+  Deno.serve((req: Request) => handleAvailability(req, dependencies));
+}

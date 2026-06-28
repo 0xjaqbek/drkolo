@@ -1,69 +1,100 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import type { ServiceAppointment, WorkingHours, BlockedTime } from '@/lib/types';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  createBlockedTime,
+  createManualAppointment,
+  deleteBlockedTime,
+  getAppointmentsByDate,
+  getBlockedTimes,
+  getPendingAppointments,
+  getWorkingHours,
+  updateAppointment,
+  updateWorkingHours,
+} from '@/lib/calendarAdminApi';
+import { ApiClientError } from '@/lib/types';
+import type {
+  AppointmentUpdate,
+  BlockedTimeInput,
+  ManualAppointmentInput,
+  WorkingHoursUpdate,
+} from '@/lib/types';
+import {
+  expireCalendarAdminSession,
+  getCalendarAdminPassword,
+} from '@/hooks/useSession';
 
-export function useWorkingHours() {
+const CALENDAR_QUERY_KEY = ['calendar-admin'] as const;
+const APPOINTMENTS_QUERY_KEY = [...CALENDAR_QUERY_KEY, 'appointments'] as const;
+const BLOCKED_TIMES_QUERY_KEY = [...CALENDAR_QUERY_KEY, 'blocked-times'] as const;
+const WORKING_HOURS_QUERY_KEY = [...CALENDAR_QUERY_KEY, 'working-hours'] as const;
+
+function requireCalendarPassword(): string {
+  const password = getCalendarAdminPassword();
+  if (!password) {
+    throw new Error('Calendar admin session is required');
+  }
+  return password;
+}
+
+async function runProtectedRequest<T>(
+  request: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await request();
+  } catch (error) {
+    if (error instanceof ApiClientError && error.status === 401) {
+      expireCalendarAdminSession();
+    }
+    throw error;
+  }
+}
+
+export function useWorkingHours(authenticated = false) {
   return useQuery({
-    queryKey: ['working_hours'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('service_working_hours')
-        .select('*')
-        .order('day_of_week');
-      if (error) throw error;
-      return (data ?? []) as WorkingHours[];
-    },
+    queryKey: WORKING_HOURS_QUERY_KEY,
+    queryFn: () => runProtectedRequest(
+      () => getWorkingHours(requireCalendarPassword()),
+    ),
+    enabled: authenticated,
   });
 }
 
 export function useUpdateWorkingHours() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (updates: Partial<WorkingHours> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('service_working_hours')
-        .update(updates)
-        .eq('id', updates.id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as WorkingHours;
-    },
+    mutationFn: ({
+      id,
+      ...update
+    }: WorkingHoursUpdate & { id: string }) => (
+      runProtectedRequest(
+        () => updateWorkingHours(id, update, requireCalendarPassword()),
+      )
+    ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['working_hours'] });
+      queryClient.invalidateQueries({ queryKey: WORKING_HOURS_QUERY_KEY });
     },
   });
 }
 
-export function useBlockedTimes(date?: string) {
+export function useBlockedTimes(date: string, authenticated = false) {
   return useQuery({
-    queryKey: ['blocked_times', date],
-    queryFn: async () => {
-      let query = supabase.from('service_blocked_times').select('*');
-      if (date) {
-        query = query.eq('block_date', date);
-      }
-      const { data, error } = await query.order('start_time');
-      if (error) throw error;
-      return (data ?? []) as BlockedTime[];
-    },
+    queryKey: [...BLOCKED_TIMES_QUERY_KEY, date],
+    queryFn: () => runProtectedRequest(
+      () => getBlockedTimes(date, requireCalendarPassword()),
+    ),
+    enabled: authenticated && Boolean(date),
   });
 }
 
 export function useCreateBlockedTime() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (block: Omit<BlockedTime, 'id' | 'created_at'>) => {
-      const { data, error } = await supabase
-        .from('service_blocked_times')
-        .insert(block)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as BlockedTime;
-    },
+    mutationFn: (block: BlockedTimeInput) => (
+      runProtectedRequest(
+        () => createBlockedTime(block, requireCalendarPassword()),
+      )
+    ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['blocked_times'] });
+      queryClient.invalidateQueries({ queryKey: BLOCKED_TIMES_QUERY_KEY });
     },
   });
 }
@@ -71,84 +102,53 @@ export function useCreateBlockedTime() {
 export function useDeleteBlockedTime() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('service_blocked_times')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) => (
+      runProtectedRequest(
+        () => deleteBlockedTime(id, requireCalendarPassword()),
+      )
+    ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['blocked_times'] });
+      queryClient.invalidateQueries({ queryKey: BLOCKED_TIMES_QUERY_KEY });
     },
   });
 }
 
-export function useAppointmentsByDate(date: string) {
+export function useAppointmentsByDate(
+  date: string,
+  authenticated = false,
+) {
   return useQuery({
-    queryKey: ['appointments', date],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('service_appointments')
-        .select('*')
-        .eq('appointment_date', date)
-        .neq('status', 'odrzucone')
-        .order('arrival_time');
-      if (error) throw error;
-      return (data ?? []) as ServiceAppointment[];
-    },
-    enabled: !!date,
+    queryKey: [...APPOINTMENTS_QUERY_KEY, 'date', date],
+    queryFn: () => runProtectedRequest(
+      () => getAppointmentsByDate(date, requireCalendarPassword()),
+    ),
+    enabled: authenticated && Boolean(date),
   });
 }
 
-export function usePendingAppointments() {
+export function usePendingAppointments(authenticated = false) {
   return useQuery({
-    queryKey: ['appointments', 'pending'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('service_appointments')
-        .select('*')
-        .eq('status', 'zapytanie')
-        .order('appointment_date')
-        .order('arrival_time');
-      if (error) throw error;
-      return (data ?? []) as ServiceAppointment[];
-    },
-  });
-}
-
-export function useAppointmentsByRange(from: string, to: string) {
-  return useQuery({
-    queryKey: ['appointments', from, to],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('service_appointments')
-        .select('*')
-        .gte('appointment_date', from)
-        .lte('appointment_date', to)
-        .order('appointment_date')
-        .order('arrival_time');
-      if (error) throw error;
-      return (data ?? []) as ServiceAppointment[];
-    },
-    enabled: !!from && !!to,
+    queryKey: [...APPOINTMENTS_QUERY_KEY, 'pending'],
+    queryFn: () => runProtectedRequest(
+      () => getPendingAppointments(requireCalendarPassword()),
+    ),
+    enabled: authenticated,
   });
 }
 
 export function useCreateAppointment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (appointment: Omit<ServiceAppointment, 'id' | 'created_at'>) => {
-      const { data, error } = await supabase
-        .from('service_appointments')
-        .insert(appointment)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as ServiceAppointment;
-    },
+    mutationFn: (appointment: ManualAppointmentInput) => (
+      runProtectedRequest(
+        () => createManualAppointment(
+          appointment,
+          requireCalendarPassword(),
+        ),
+      )
+    ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: APPOINTMENTS_QUERY_KEY });
     },
   });
 }
@@ -156,18 +156,16 @@ export function useCreateAppointment() {
 export function useUpdateAppointment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (updates: Partial<ServiceAppointment> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('service_appointments')
-        .update(updates)
-        .eq('id', updates.id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as ServiceAppointment;
-    },
+    mutationFn: ({
+      id,
+      ...update
+    }: AppointmentUpdate & { id: string }) => (
+      runProtectedRequest(
+        () => updateAppointment(id, update, requireCalendarPassword()),
+      )
+    ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: APPOINTMENTS_QUERY_KEY });
     },
   });
 }

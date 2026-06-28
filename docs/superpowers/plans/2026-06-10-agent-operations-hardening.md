@@ -383,7 +383,7 @@ Test that JSON responses contain:
 
 ```ts
 Access-Control-Allow-Origin: *
-Access-Control-Allow-Headers: authorization, apikey, x-admin-password, content-type
+Access-Control-Allow-Headers: authorization, apikey, x-client-info, x-admin-password, x-customer-phone, x-lookup-token, content-type
 Content-Type: application/json; charset=utf-8
 Cache-Control: no-store
 ```
@@ -513,7 +513,8 @@ Cover:
 - non-JSON POST returns `415 UNSUPPORTED_MEDIA_TYPE`;
 - creation returns `lookup_token` but never `lookup_token_hash`;
 - database `DRK03` returns `409 SLOT_TAKEN`;
-- GET requires both `phone` and `token`;
+- GET requires both `X-Customer-Phone` and `X-Lookup-Token` headers;
+- query-string phone or token credentials are ignored;
 - incorrect credentials return generic `404 NOT_FOUND`;
 - returned appointment omits phone, customer name, token hash, and technician note.
 
@@ -545,8 +546,10 @@ json({
 
 - [ ] **Step 4: Implement protected GET**
 
-Require `phone` and `token`, normalize/hash them, and call
-`get_public_appointment`. Return generic `404` when no row matches.
+Require `X-Customer-Phone` and `X-Lookup-Token` headers, normalize/hash them,
+and call `get_public_appointment`. Return `400 MISSING_PHONE` or
+`400 MISSING_TOKEN` when a header is absent, ignore query-string credentials,
+and return generic `404` when no row matches.
 
 - [ ] **Step 5: Verify GREEN**
 
@@ -652,6 +655,9 @@ Mock `fetch` and assert:
 - availability encodes the date;
 - both `Authorization` and `apikey` headers are sent;
 - booking serializes the seven public fields;
+- status lookup sends the phone in `X-Customer-Phone` and the token in
+  `X-Lookup-Token`;
+- status lookup puts neither customer credential in the URL;
 - structured API errors become an `ApiClientError` with `code` and `status`.
 
 - [ ] **Step 2: Write failing admin-client tests**
@@ -891,7 +897,8 @@ Load the static JSON/text files and assert:
 - OpenAPI parses as 3.1;
 - server URL matches the resumed project;
 - two gateway security schemes describe `Authorization` and `apikey`;
-- appointment GET requires `phone` and `token`;
+- appointment GET requires `X-Customer-Phone` and `X-Lookup-Token` header
+  parameters and has no customer credential query parameters;
 - creation response includes `lookup_token`;
 - availability includes `timezone`;
 - plugin logo is `/og-image.jpg`;
@@ -906,7 +913,7 @@ Run:
 npm test -- src/test/agentDiscovery.test.ts
 ```
 
-Expected: failures for auth mismatch, missing token, and invalid logo.
+Expected: failures for auth mismatch, missing lookup headers, and invalid logo.
 
 - [ ] **Step 3: Update OpenAPI**
 
@@ -935,8 +942,9 @@ with:
 }
 ```
 
-Document token lookup, all required properties, Warsaw timezone, `404`, `409`,
-`413`, and `500`.
+Document `X-Customer-Phone` and `X-Lookup-Token` as required appointment GET
+header parameters, token lookup, all required properties, Warsaw timezone,
+`404`, `409`, `413`, and `500`.
 
 - [ ] **Step 4: Update llms and manifest**
 
@@ -1066,8 +1074,10 @@ with a clearly synthetic customer:
 Confirm:
 
 - creation returns `201` and a token;
-- correct phone plus token returns the inquiry;
-- wrong token returns `404`;
+- a GET with the gateway headers plus `X-Customer-Phone: +48000000000` and
+  `X-Lookup-Token: <returned-token>` returns the inquiry;
+- the same GET with a wrong `X-Lookup-Token` returns `404`;
+- customer phone and lookup token never appear in the request URL;
 - a duplicate POST returns `409`;
 - no response exposes internal fields.
 

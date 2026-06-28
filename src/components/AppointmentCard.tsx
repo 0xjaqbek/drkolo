@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useUpdateAppointment } from '@/hooks/useAppointments';
-import type { ServiceAppointment } from '@/lib/types';
+import { ApiClientError, type ServiceAppointment } from '@/lib/types';
 import { format, parse } from 'date-fns';
 import { Phone, Clock, FileText, Check, X, CheckCircle, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { toast } from 'sonner';
 
 interface AppointmentCardProps {
   appointment: ServiceAppointment;
@@ -36,26 +37,51 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
     zakonczone: 'Zakończone',
   };
 
-  const handleUpdateStatus = (status: ServiceAppointment['status']) => {
-    updateMutation.mutate({
-      id: appointment.id,
-      status,
-      estimated_duration_minutes: parseInt(duration, 10),
-      technician_note: note,
-    });
-    setIsEditing(false);
+  const showUpdateError = (error: unknown) => {
+    if (error instanceof ApiClientError && error.code === 'SLOT_TAKEN') {
+      toast.error('Ten termin jest już zajęty. Wybierz inną datę lub godzinę.');
+      return;
+    }
+    toast.error('Błąd podczas aktualizacji wizyty');
   };
 
-  const handleSaveEdit = () => {
-    updateMutation.mutate({
-      id: appointment.id,
-      estimated_duration_minutes: parseInt(duration, 10) || null,
-      technician_note: note,
-      appointment_date: editDate,
-      arrival_time: `${editTime}:00`,
-      ...(appointment.status === 'zapytanie' ? { status: 'potwierdzone' } : {})
-    });
-    setIsEditing(false);
+  const handleUpdateStatus = async (
+    status: ServiceAppointment['status'],
+  ) => {
+    try {
+      await updateMutation.mutateAsync({
+        id: appointment.id,
+        status,
+        estimated_duration_minutes: parseInt(duration, 10),
+        technician_note: note,
+      });
+      setIsEditing(false);
+    } catch (error) {
+      showUpdateError(error);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    const arrivalTime = `${editTime}:00`;
+    try {
+      await updateMutation.mutateAsync({
+        id: appointment.id,
+        ...(editDate !== appointment.appointment_date
+          ? { appointment_date: editDate }
+          : {}),
+        ...(arrivalTime !== appointment.arrival_time
+          ? { arrival_time: arrivalTime }
+          : {}),
+        estimated_duration_minutes: parseInt(duration, 10) || null,
+        technician_note: note,
+        ...(appointment.status === 'zapytanie'
+          ? { status: 'potwierdzone' as const }
+          : {}),
+      });
+      setIsEditing(false);
+    } catch (error) {
+      showUpdateError(error);
+    }
   };
 
   const arrivalDate = parse(appointment.arrival_time, 'HH:mm:ss', new Date());
@@ -115,21 +141,30 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
               <>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Data</Label>
-                    <Input 
-                      type="date" 
-                      value={editDate} 
+                    <Label htmlFor={`appointment-date-${appointment.id}`} className="text-xs">
+                      Data
+                    </Label>
+                    <Input
+                      id={`appointment-date-${appointment.id}`}
+                      type="date"
+                      value={editDate}
                       onChange={e => setEditDate(e.target.value)}
                       className="h-8"
+                      disabled={updateMutation.isPending}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Godzina</Label>
-                    <Input 
-                      type="time" 
-                      value={editTime} 
+                    <Label htmlFor={`appointment-time-${appointment.id}`} className="text-xs">
+                      Godzina
+                    </Label>
+                    <Input
+                      id={`appointment-time-${appointment.id}`}
+                      type="time"
+                      step={1800}
+                      value={editTime}
                       onChange={e => setEditTime(e.target.value)}
                       className="h-8"
+                      disabled={updateMutation.isPending}
                     />
                   </div>
                 </div>
@@ -140,6 +175,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
                     value={duration} 
                     onChange={e => setDuration(e.target.value)}
                     className="h-8"
+                    disabled={updateMutation.isPending}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -149,12 +185,25 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
                     onChange={e => setNote(e.target.value)}
                     className="min-h-[60px] text-sm"
                     placeholder="Wpisz notatkę..."
+                    disabled={updateMutation.isPending}
                   />
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>Anuluj</Button>
-                  <Button size="sm" onClick={handleSaveEdit} disabled={updateMutation.isPending}>
-                    <Save className="w-4 h-4 mr-1.5" /> Zapisz
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditing(false)}
+                    disabled={updateMutation.isPending}
+                  >
+                    Anuluj
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => void handleSaveEdit()}
+                    disabled={updateMutation.isPending}
+                  >
+                    <Save className="w-4 h-4 mr-1.5" />
+                    {updateMutation.isPending ? 'Zapisywanie...' : 'Zapisz'}
                   </Button>
                 </div>
               </>
@@ -183,7 +232,8 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
                 variant="outline" 
                 size="sm" 
                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                onClick={() => handleUpdateStatus('odrzucone')}
+                onClick={() => void handleUpdateStatus('odrzucone')}
+                disabled={updateMutation.isPending}
               >
                 <X className="w-4 h-4 mr-1" /> Odrzuć
               </Button>
@@ -195,7 +245,8 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
               <Button 
                 size="sm" 
                 className="bg-gray-800 hover:bg-gray-900 text-white"
-                onClick={() => handleUpdateStatus('zakonczone')}
+                onClick={() => void handleUpdateStatus('zakonczone')}
+                disabled={updateMutation.isPending}
               >
                 <CheckCircle className="w-4 h-4 mr-1" /> Zakończ
               </Button>
@@ -213,7 +264,8 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => handleUpdateStatus('potwierdzone')}
+              onClick={() => void handleUpdateStatus('potwierdzone')}
+              disabled={updateMutation.isPending}
             >
               Przywróć
             </Button>

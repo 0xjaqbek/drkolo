@@ -47,6 +47,13 @@ and agent implementations.
 
 ## Public Operations
 
+Public requests pass the Supabase gateway credentials as headers:
+
+```http
+Authorization: Bearer <supabase-anon-key>
+apikey: <supabase-anon-key>
+```
+
 ### List services
 
 `GET /functions/v1/services`
@@ -118,10 +125,21 @@ token or the customer's full request body.
 
 ### Retrieve booking status
 
-`GET /functions/v1/appointments?phone=...&token=...`
+`GET /functions/v1/appointments`
 
-Both values are required. The function normalizes the phone and hashes the
-provided token, then queries only rows matching both values. Invalid or
+The customer credentials are required headers and must never be placed in the
+URL:
+
+```http
+Authorization: Bearer <supabase-anon-key>
+apikey: <supabase-anon-key>
+X-Customer-Phone: +48600123456
+X-Lookup-Token: <base64url-token>
+```
+
+The function normalizes `X-Customer-Phone` and hashes `X-Lookup-Token`, then
+queries only rows matching both values. Query-string credentials are ignored.
+Missing headers return `400 MISSING_PHONE` or `400 MISSING_TOKEN`. Invalid or
 non-matching credentials return:
 
 ```json
@@ -256,6 +274,8 @@ Required codes include:
 - `INVALID_TIME`
 - `INVALID_PHONE`
 - `MISSING_FIELDS`
+- `MISSING_PHONE`
+- `MISSING_TOKEN`
 - `PAYLOAD_TOO_LARGE`
 - `DAY_CLOSED`
 - `SLOT_TAKEN`
@@ -264,7 +284,11 @@ Required codes include:
 - `DB_ERROR`
 
 Every response, including errors and preflight responses, includes consistent
-CORS and JSON content headers where applicable.
+CORS and JSON content headers where applicable. CORS allows exactly:
+
+```http
+authorization, apikey, x-client-info, x-admin-password, x-customer-phone, x-lookup-token, content-type
+```
 
 ## Discovery Contract
 
@@ -274,7 +298,8 @@ It must:
 - describe the Supabase gateway authentication accurately;
 - include both `Authorization: Bearer <anon-key>` and `apikey: <anon-key>` if
   both are required by the deployed gateway;
-- require the lookup token for status retrieval;
+- require `X-Customer-Phone` and `X-Lookup-Token` header parameters for status
+  retrieval and expose neither credential in the URL;
 - document `Europe/Warsaw`;
 - mark required schema properties;
 - use current future-date examples;
@@ -286,7 +311,8 @@ It must:
 2. check availability;
 3. ask the user before creating a booking;
 4. preserve the returned lookup token;
-5. use phone plus token for status retrieval.
+5. send the phone in `X-Customer-Phone` and the token in `X-Lookup-Token` for
+   status retrieval.
 
 The plugin manifest and OpenAPI authentication must agree. The manifest logo
 points to the existing `/og-image.jpg`. Discovery files must not claim that a

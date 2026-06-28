@@ -10,6 +10,9 @@ interface TimelinePickerProps {
   workingHours: WorkingHours | undefined;
   appointments: ServiceAppointment[];
   blockedTimes: BlockedTime[];
+  availableSlots?: string[];
+  isLoading?: boolean;
+  error?: unknown;
   selectedTime: string | null;
   onSelectTime: (time: string) => void;
   className?: string;
@@ -20,10 +23,20 @@ export function TimelinePicker({
   workingHours,
   appointments,
   blockedTimes,
+  availableSlots,
+  isLoading = false,
+  error,
   selectedTime,
   onSelectTime,
   className,
 }: TimelinePickerProps) {
+  const availableSlotSet = useMemo(
+    () => availableSlots === undefined
+      ? null
+      : new Set(availableSlots.map((slot) => slot.substring(0, 5))),
+    [availableSlots],
+  );
+
   const { openTime, closeTime, isOpen } = useMemo(() => {
     if (!workingHours || !workingHours.is_open || !workingHours.open_time || !workingHours.close_time) {
       return { openTime: null, closeTime: null, isOpen: false };
@@ -64,7 +77,9 @@ export function TimelinePicker({
         return isBefore(slotTime, btEnd) && isAfter(slotEndTime, btStart);
       });
 
-      const isBusy = overlappingAppointments.length > 0 || overlappingBlocked.length > 0;
+      const isBusy = availableSlotSet === null
+        ? overlappingAppointments.length > 0 || overlappingBlocked.length > 0
+        : !availableSlotSet.has(timeStr);
 
       return {
         timeStr,
@@ -74,7 +89,37 @@ export function TimelinePicker({
         blocked: overlappingBlocked,
       };
     });
-  }, [isOpen, openTime, closeTime, appointments, blockedTimes, date]);
+  }, [
+    isOpen,
+    openTime,
+    closeTime,
+    appointments,
+    blockedTimes,
+    availableSlotSet,
+    date,
+  ]);
+
+  if (isLoading) {
+    return (
+      <div
+        role="status"
+        className={cn("p-6 text-center text-muted-foreground bg-muted/50 rounded-lg border", className)}
+      >
+        Ładowanie dostępnych godzin...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        role="alert"
+        className={cn("p-6 text-center text-destructive bg-destructive/5 rounded-lg border border-destructive/20", className)}
+      >
+        Nie udało się pobrać dostępnych godzin. Spróbuj ponownie.
+      </div>
+    );
+  }
 
   if (!isOpen) {
     return (

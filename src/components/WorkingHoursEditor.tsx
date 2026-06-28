@@ -10,15 +10,51 @@ import { toast } from 'sonner';
 
 const DAYS = ['Niedziela', 'Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota'];
 
-export function WorkingHoursEditor() {
-  const { data: workingHours, isLoading } = useWorkingHours();
+interface WorkingHoursEditorProps {
+  authenticated: boolean;
+}
+
+export function WorkingHoursEditor({
+  authenticated,
+}: WorkingHoursEditorProps) {
+  const {
+    data: workingHours,
+    error,
+    isLoading,
+    refetch,
+  } = useWorkingHours(authenticated);
   const updateMutation = useUpdateWorkingHours();
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // local state for editing a row
   const [editData, setEditData] = useState<Partial<WorkingHours>>({});
 
-  if (isLoading || !workingHours) return <div className="p-4 text-center">Ładowanie...</div>;
+  if (isLoading) {
+    return (
+      <div role="status" className="p-4 text-center text-muted-foreground">
+        Ładowanie godzin otwarcia...
+      </div>
+    );
+  }
+
+  if (error || !workingHours) {
+    return (
+      <div
+        role="alert"
+        className="p-4 text-center text-destructive border border-destructive/20 rounded-lg space-y-3"
+      >
+        <p>Nie udało się pobrać godzin otwarcia.</p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => void refetch()}
+        >
+          Spróbuj ponownie
+        </Button>
+      </div>
+    );
+  }
 
   const handleEdit = (wh: WorkingHours) => {
     setEditingId(wh.id);
@@ -33,9 +69,9 @@ export function WorkingHoursEditor() {
     try {
       await updateMutation.mutateAsync({
         id,
-        open_time: editData.is_open ? `${editData.open_time}:00` : null,
-        close_time: editData.is_open ? `${editData.close_time}:00` : null,
-        is_open: editData.is_open,
+        open_time: editData.is_open ? editData.open_time ?? null : null,
+        close_time: editData.is_open ? editData.close_time ?? null : null,
+        is_open: Boolean(editData.is_open),
       });
       toast.success('Zapisano godziny otwarcia');
       setEditingId(null);
