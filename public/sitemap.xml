@@ -14,19 +14,19 @@
     </image:image>
   </url>
   <url>
-    <loc>https://drkolo.pl/cennik</loc>
+    <loc>https://drkolo.pl/cennik/</loc>
     <lastmod>2026-06-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://drkolo.pl/rezerwacja</loc>
+    <loc>https://drkolo.pl/rezerwacja/</loc>
     <lastmod>2026-06-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://drkolo.pl/polityka-prywatnosci</loc>
+    <loc>https://drkolo.pl/polityka-prywatnosci/</loc>
     <lastmod>2026-06-28</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
