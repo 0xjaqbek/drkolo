@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useUpdateAppointment } from '@/hooks/useAppointments';
 import { ApiClientError, type ServiceAppointment } from '@/lib/types';
 import { format, parse } from 'date-fns';
-import { Phone, Clock, FileText, Check, X, CheckCircle, Save } from 'lucide-react';
+import { Phone, Clock, FileText, Check, X, CheckCircle, Save, CalendarDays, CalendarPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -85,6 +85,11 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
   };
 
   const arrivalDate = parse(appointment.arrival_time, 'HH:mm:ss', new Date());
+  const createdDate = new Date(appointment.created_at);
+  const appointmentDateFormatted = format(
+    parse(appointment.appointment_date, 'yyyy-MM-dd', new Date()),
+    'dd.MM.yyyy',
+  );
 
   return (
     <Card className="overflow-hidden transition-all hover:shadow-md">
@@ -92,13 +97,17 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
         <div>
           <div className="font-semibold text-lg">{appointment.customer_name}</div>
           <div className="text-sm text-muted-foreground flex items-center gap-2">
-            <Clock className="w-3.5 h-3.5" />
-            {format(arrivalDate, 'HH:mm')}
+            <CalendarDays className="w-3.5 h-3.5" />
+            {appointmentDateFormatted}, {format(arrivalDate, 'HH:mm')}
             {appointment.estimated_duration_minutes && (
               <span className="text-xs">
                 (~{appointment.estimated_duration_minutes} min)
               </span>
             )}
+          </div>
+          <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+            <CalendarPlus className="w-3 h-3" />
+            Złożono: {format(createdDate, 'dd.MM.yyyy, HH:mm')}
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
