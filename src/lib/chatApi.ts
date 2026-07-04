@@ -8,6 +8,11 @@ export interface ChatMessage {
 export interface ChatResponse {
   reply: string;
   smsBody?: string;
+  booking?: {
+    id: string;
+    status: string;
+  };
+  bookingError?: string;
 }
 
 export interface AdminSession {
