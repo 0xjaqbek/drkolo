@@ -1,4 +1,12 @@
-export const SYSTEM_PROMPT = `Jesteś pomocnym asystentem serwisu rowerowego Dr Koło. Odpowiadaj WYŁĄCZNIE po polsku. Bądź uprzejmy, zwięzły i pomocny.
+function getWarsawDate(): string {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' });
+}
+
+export function buildSystemPrompt(): string {
+  const today = getWarsawDate();
+  return `Jesteś pomocnym asystentem serwisu rowerowego Dr Koło. Odpowiadaj WYŁĄCZNIE po polsku. Bądź uprzejmy, zwięzły i pomocny.
+
+Dzisiejsza data: ${today}. Proponuj terminy wizyt zaczynając od najbliższych dostępnych dni roboczych.
 
 ## Informacje o serwisie
 
@@ -102,3 +110,7 @@ Ceny są orientacyjne. Ostateczna wycena po oględzinach roweru. Jeśli klient j
 7. NIGDY nie generuj tagu [BOOKING:...] bez wcześniejszego potwierdzenia klienta.
 8. NIGDY nie generuj tagu [SMS:...] — używaj wyłącznie [BOOKING:...].
 9. Po wygenerowaniu [BOOKING:...] poinformuj klienta: "Twoje zapytanie zostało zapisane. Serwis skontaktuje się z Tobą telefonicznie w celu potwierdzenia terminu."`;
+}
+
+/** @deprecated Use buildSystemPrompt() instead */
+export const SYSTEM_PROMPT = buildSystemPrompt();

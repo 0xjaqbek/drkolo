@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import OpenAI from 'openai';
 import { supabase } from '../lib/supabase';
-import { SYSTEM_PROMPT } from '../lib/system-prompt';
+import { buildSystemPrompt } from '../lib/system-prompt';
 import { parseReply, type BookingData } from '../lib/parse-reply';
 import { setCors, handleOptions } from '../lib/cors';
 
@@ -74,7 +74,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const completion = await client.chat.completions.create({
     model: 'deepseek-chat',
-    messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
+    messages: [{ role: 'system', content: buildSystemPrompt() }, ...messages],
   });
 
   const rawReply = completion.choices[0].message.content ?? '';
