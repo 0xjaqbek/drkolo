@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import OpenAI from 'openai';
 import { supabase } from '../lib/supabase';
 import { SYSTEM_PROMPT } from '../lib/system-prompt';
-import { parseSmsFromReply } from '../lib/parse-sms';
+import { parseReply } from '../lib/parse-reply';
 import { setCors, handleOptions } from '../lib/cors';
 
 interface ChatMessage {
@@ -42,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   });
 
   const rawReply = completion.choices[0].message.content ?? '';
-  const { reply, smsBody } = parseSmsFromReply(rawReply);
+  const { reply, smsBody } = parseReply(rawReply);
 
   // Persist the latest user message and assistant reply
   const lastUserMessage = messages[messages.length - 1];
