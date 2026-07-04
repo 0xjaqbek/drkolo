@@ -1,7 +1,7 @@
 # Dr Koło — AI Agent Integration
 
 > This file tells AI agents how to interact with Dr Koło bike service programmatically.
-> Full documentation: https://drkolo.pl/llms-full.txt
+> [Full documentation](https://drkolo.pl/llms-full.txt)
 
 ## Actions Available
 
@@ -37,9 +37,10 @@ Authorization: Bearer <anon-key-above>
 
 ## Full Specs
 
-- OpenAPI 3.1: https://drkolo.pl/openapi.json
-- ChatGPT Plugin: https://drkolo.pl/.well-known/ai-plugin.json
-- Full docs: https://drkolo.pl/llms-full.txt
+- [OpenAPI 3.1 Specification](https://drkolo.pl/openapi.json)
+- [ChatGPT Plugin Manifest](https://drkolo.pl/.well-known/ai-plugin.json)
+- [Full documentation (llms-full.txt)](https://drkolo.pl/llms-full.txt)
+- [Main site](https://drkolo.pl)
 
 ## Rate Limits
 

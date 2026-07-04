@@ -1,17 +1,17 @@
 # Dr Koło — Pełna dokumentacja serwisu
 
 > Profesjonalny serwis rowerowy w Gdańsku i Kartuzach, Polska.
-> Patrz: https://drkolo.pl/llms.txt (wersja skrócona)
+> [Wersja skrócona](https://drkolo.pl/llms.txt)
 
 ## Kontakt
 
 - Telefon: 511 061 221
 - Adres główny: Kielnieńska 111, Gdańsk 80-299
 - Punkt odbioru: Słowackiego 36, Kartuzy (wcześniejszy kontakt telefoniczny wymagany)
-- Strona: https://drkolo.pl
-- Google Maps: https://www.google.com/maps?cid=10548225081155555452
-- Facebook: https://www.facebook.com/profile.php?id=61588984934581
-- Instagram: https://www.instagram.com/drkolo_serwis/
+- Strona: [drkolo.pl](https://drkolo.pl)
+- Google Maps: [Dr Koło na Mapach Google](https://www.google.com/maps?cid=10548225081155555452)
+- Facebook: [Dr Koło na Facebooku](https://www.facebook.com/profile.php?id=61588984934581)
+- Instagram: [drkolo_serwis](https://www.instagram.com/drkolo_serwis/)
 
 ## Godziny otwarcia (Gdańsk)
 
@@ -104,7 +104,7 @@ W serwisie Dr Koło w Gdańsku przegląd podstawowy roweru kosztuje 249 zł. Prz
 Dr Koło mieści się przy ul. Kielnieńskiej 111 w Gdańsku (80-299). Posiadamy też punkt odbioru w Kartuzach przy ul. Słowackiego 36. Kontakt telefoniczny: 511 061 221.
 
 ### Jak umówić wizytę w serwisie rowerowym Dr Koło?
-Wizytę można zarezerwować online na stronie drkolo.pl/rezerwacja — wystarczy wybrać datę, godzinę i opisać usterkę. Serwis oddzwoni, aby potwierdzić termin. Można też zadzwonić bezpośrednio: 511 061 221.
+Wizytę można zarezerwować online na stronie [drkolo.pl/rezerwacja](https://drkolo.pl/rezerwacja/) — wystarczy wybrać datę, godzinę i opisać usterkę. Serwis oddzwoni, aby potwierdzić termin. Można też zadzwonić bezpośrednio: 511 061 221.
 
 ### Jakie rowery naprawia serwis Dr Koło?
 Dr Koło serwisuje wszystkie typy rowerów: górskie MTB, szosowe, gravel, miejskie, dziecięce i elektryczne. Specjalizujemy się w serwisie amortyzatorów przednich i tylnych zawieszeń, a także wykonujemy diagnostykę Bosch dla rowerów elektrycznych.
@@ -142,22 +142,25 @@ Tak, rower może zostać w serwisie do czasu zakończenia naprawy. W przypadku o
 ### Jakie formy płatności akceptujecie?
 Akceptujemy gotówkę oraz karty płatnicze (Visa, Mastercard). Płatność następuje przy odbiorze roweru po zakończeniu serwisu.
 
+### Czy mogę zarezerwować wizytę przez asystenta AI?
+Tak, Dr Koło udostępnia otwarte REST API dla agentów AI. Asystenci tacy jak ChatGPT, Gemini, Claude czy Perplexity mogą sprawdzić wolne terminy, przejrzeć cennik i zarezerwować wizytę w Twoim imieniu. Specyfikacja API: [openapi.json](https://drkolo.pl/openapi.json), dokumentacja: [llms.txt](https://drkolo.pl/llms.txt).
+
 ## Rezerwacja
 
-Wizyty można rezerwować online: https://drkolo.pl/rezerwacja
+Wizyty można rezerwować online: [drkolo.pl/rezerwacja](https://drkolo.pl/rezerwacja/)
 
 ## Polityka prywatności
 
-https://drkolo.pl/polityka-prywatnosci
+[Polityka prywatności](https://drkolo.pl/polityka-prywatnosci/)
 
 ## API
 
 Dr Koło udostępnia REST API dla agentów AI i aplikacji zewnętrznych.
 
-Specyfikacja OpenAPI 3.1: https://drkolo.pl/openapi.json
-Manifest ChatGPT: https://drkolo.pl/.well-known/ai-plugin.json
+- [Specyfikacja OpenAPI 3.1](https://drkolo.pl/openapi.json)
+- [Manifest ChatGPT Plugin](https://drkolo.pl/.well-known/ai-plugin.json)
 
-Uwierzytelnianie: Bearer token (klucz anon) — patrz securitySchemes w /openapi.json.
+Uwierzytelnianie: Bearer token (klucz anon) — patrz securitySchemes w [openapi.json](https://drkolo.pl/openapi.json).
 Base URL: https://iftyvvymlsdercmyagpe.supabase.co/functions/v1
 
 ### Endpoints

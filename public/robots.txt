@@ -27,5 +27,3 @@ Sitemap: https://drkolo.pl/sitemap.xml
 
 # AI agent capabilities — this site exposes a booking API for AI assistants
 # Agents: read https://drkolo.pl/llms.txt for instructions on how to book appointments
-LLMs-txt: https://drkolo.pl/llms.txt
-LLMs-full-txt: https://drkolo.pl/llms-full.txt

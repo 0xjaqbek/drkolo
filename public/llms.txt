@@ -1,7 +1,7 @@
 # Dr Koło
 
 > Profesjonalny serwis rowerowy w Gdańsku i Kartuzach, Polska.
-> Pełna wersja z zakresami usług: https://drkolo.pl/llms-full.txt
+> [Pełna wersja z zakresami usług](https://drkolo.pl/llms-full.txt)
 
 Dr Koło to serwis rowerowy specjalizujący się w naprawie i serwisowaniu rowerów każdego typu — MTB, szosowych, gravel, miejskich, dziecięcych i elektrycznych — oraz w serwisie amortyzatorów i tylnych zawieszeń.
 
@@ -10,7 +10,7 @@ Dr Koło to serwis rowerowy specjalizujący się w naprawie i serwisowaniu rower
 - Telefon: 511 061 221
 - Adres główny: Kielnieńska 111, Gdańsk 80-299
 - Punkt odbioru: Słowackiego 36, Kartuzy (wcześniejszy kontakt telefoniczny wymagany)
-- Strona: https://drkolo.pl
+- Strona: [drkolo.pl](https://drkolo.pl)
 
 ## Godziny otwarcia (Gdańsk)
 
@@ -46,11 +46,11 @@ Dr Koło to serwis rowerowy specjalizujący się w naprawie i serwisowaniu rower
 - Serwis hamulca: 50 zł
 - Prostowanie haka przerzutki: 30 zł
 
-Szczegółowy cennik: https://drkolo.pl/cennik
+[Szczegółowy cennik](https://drkolo.pl/cennik/)
 
 ## Rezerwacja
 
-Wizyty można rezerwować online: https://drkolo.pl/rezerwacja
+Wizyty można rezerwować online: [drkolo.pl/rezerwacja](https://drkolo.pl/rezerwacja/)
 
 ## Obszar działania
 
@@ -60,10 +60,11 @@ Gdańsk, Kartuzy i okolice (Trójmiasto, Pomorze).
 
 Dr Koło udostępnia REST API dla agentów AI i aplikacji zewnętrznych.
 
-Specyfikacja OpenAPI 3.1: https://drkolo.pl/openapi.json
-Manifest ChatGPT: https://drkolo.pl/.well-known/ai-plugin.json
+- [Specyfikacja OpenAPI 3.1](https://drkolo.pl/openapi.json)
+- [Manifest ChatGPT Plugin](https://drkolo.pl/.well-known/ai-plugin.json)
+- [Pełna dokumentacja API](https://drkolo.pl/llms-full.txt)
 
-Uwierzytelnianie: Bearer token (klucz anon) — patrz securitySchemes w /openapi.json.
+Uwierzytelnianie: Bearer token (klucz anon) — patrz securitySchemes w [openapi.json](https://drkolo.pl/openapi.json).
 Base URL: https://iftyvvymlsdercmyagpe.supabase.co/functions/v1
 
 ### Endpoints
