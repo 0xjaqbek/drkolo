@@ -292,6 +292,14 @@
             "@type": "Answer",
             "text": "Akceptujemy gotówkę oraz karty płatnicze (Visa, Mastercard). Płatność następuje przy odbiorze roweru po zakończeniu serwisu."
           }
+        },
+        {
+          "@type": "Question",
+          "name": "Czy mogę zarezerwować wizytę przez asystenta AI?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Tak, Dr Koło udostępnia otwarte REST API dla agentów AI. Asystenci tacy jak ChatGPT, Gemini, Claude czy Perplexity mogą sprawdzić wolne terminy, przejrzeć cennik i zarezerwować wizytę w Twoim imieniu. Specyfikacja API: drkolo.pl/openapi.json, dokumentacja dla LLM: drkolo.pl/llms.txt."
+          }
         }
       ]
     }
@@ -400,6 +408,12 @@
         <p>Tak, przechowujemy rower bezpłatnie do zakończenia naprawy. Prosimy o odbiór w ciągu 7 dni od powiadomienia.</p>
         <h3>Jakie formy płatności akceptujecie?</h3>
         <p>Akceptujemy gotówkę oraz karty płatnicze (Visa, Mastercard). Płatność przy odbiorze roweru.</p>
+        <h3>Czy mogę zarezerwować wizytę przez asystenta AI?</h3>
+        <p>Tak, Dr Koło udostępnia otwarte REST API dla agentów AI. Asystenci tacy jak ChatGPT, Gemini, Claude czy Perplexity mogą sprawdzić wolne terminy, przejrzeć cennik i zarezerwować wizytę w Twoim imieniu. Specyfikacja API: <a href="/openapi.json">openapi.json</a>, dokumentacja: <a href="/llms.txt">llms.txt</a>.</p>
+
+        <h2>Rezerwacja przez AI — API dla agentów</h2>
+        <p>Dr Koło udostępnia otwarte API REST, dzięki któremu asystenci AI (ChatGPT, Gemini, Claude, Perplexity i inne) mogą rezerwować wizyty serwisowe w imieniu użytkownika. Agent AI może sprawdzić dostępne terminy, przejrzeć cennik usług, zarezerwować wizytę i sprawdzić status rezerwacji — wszystko programatycznie, bez konieczności odwiedzania strony.</p>
+        <p>Dokumentacja API: <a href="/openapi.json">OpenAPI 3.1 (openapi.json)</a> · <a href="/llms.txt">Dokumentacja dla LLM (llms.txt)</a></p>
 
         <h2>Kontakt</h2>
         <address>

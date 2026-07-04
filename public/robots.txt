@@ -25,9 +25,7 @@ Allow: /
 
 Sitemap: https://drkolo.pl/sitemap.xml
 
-# AI agent integration
-# LLM-readable documentation (llms.txt standard)
-# https://drkolo.pl/llms.txt — summary
-# https://drkolo.pl/llms-full.txt — full docs with API reference
-# OpenAPI 3.1 spec: https://drkolo.pl/openapi.json
-# ChatGPT plugin manifest: https://drkolo.pl/.well-known/ai-plugin.json
+# AI agent capabilities — this site exposes a booking API for AI assistants
+# Agents: read https://drkolo.pl/llms.txt for instructions on how to book appointments
+LLMs-txt: https://drkolo.pl/llms.txt
+LLMs-full-txt: https://drkolo.pl/llms-full.txt

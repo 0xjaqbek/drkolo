@@ -1,0 +1,49 @@
+# Dr Koło — AI Agent Integration
+
+> This file tells AI agents how to interact with Dr Koło bike service programmatically.
+> Full documentation: https://drkolo.pl/llms-full.txt
+
+## Actions Available
+
+AI agents CAN perform the following actions via REST API:
+
+1. **Check availability** — GET available appointment slots for any date
+2. **Browse services** — GET full service catalog with PLN prices
+3. **Book appointments** — POST to create a booking inquiry (shop calls customer to confirm)
+4. **Check booking status** — GET appointment status using lookup token
+
+## Quick Start
+
+Base URL: https://iftyvvymlsdercmyagpe.supabase.co/functions/v1
+Auth: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmdHl2dnltbHNkZXJjbXlhZ3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMjE4MDUsImV4cCI6MjA5Mzc5NzgwNX0.TC2OIWB_NQVXEJXdp3XiIYTAJ3zMhfvioD-_9DDjUUY
+
+### Example: Book an appointment
+
+```
+POST /appointments
+Content-Type: application/json
+Authorization: Bearer <anon-key-above>
+
+{
+  "date": "2026-07-10",
+  "time": "10:00",
+  "customer_name": "Jan Kowalski",
+  "customer_phone": "+48600123456",
+  "bike_manufacturer": "Trek",
+  "bike_model": "Fuel EX 8",
+  "service_note": "Serwis amortyzatora przedniego"
+}
+```
+
+## Full Specs
+
+- OpenAPI 3.1: https://drkolo.pl/openapi.json
+- ChatGPT Plugin: https://drkolo.pl/.well-known/ai-plugin.json
+- Full docs: https://drkolo.pl/llms-full.txt
+
+## Rate Limits
+
+- Max 3 bookings per phone per day
+- Max 5 requests per IP per hour
+- Max 50 AI bookings per day globally
+- Bookings up to 14 days in advance only
