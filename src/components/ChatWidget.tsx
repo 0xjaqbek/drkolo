@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, MessageSquare } from 'lucide-react';
+import { MessageCircle, X, Send, MessageSquare, CheckCircle, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { sendChatMessage, type ChatMessage } from '@/lib/chatApi';
+import { sendChatMessage, type ChatMessage, type ChatResponse } from '@/lib/chatApi';
 
 function getOrCreateSessionId(): string {
   const key = 'chat_session_id';
@@ -12,6 +12,21 @@ function getOrCreateSessionId(): string {
   return id;
 }
 
+function isMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  if (navigator.maxTouchPoints > 0) {
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }
+  return false;
+}
+
+const SERVICE_PHONE = '+48511061221';
+
+type BookingStatus =
+  | { type: 'success' }
+  | { type: 'error'; message: string }
+  | null;
+
 export function ChatWidget() {
   const [apiReady, setApiReady] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -19,8 +34,10 @@ export function ChatWidget() {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [smsBody, setSmsBody] = useState<string | null>(null);
+  const [bookingStatus, setBookingStatus] = useState<BookingStatus>(null);
   const sessionIdRef = useRef<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const mobile = isMobileDevice();
 
   useEffect(() => {
     const url = import.meta.env.VITE_CHAT_API_URL as string;
@@ -32,7 +49,23 @@ export function ChatWidget() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView?.({ behavior: 'smooth' });
-  }, [messages, isLoading]);
+  }, [messages, isLoading, bookingStatus]);
+
+  const handleBookingResponse = (response: ChatResponse) => {
+    if (response.booking) {
+      setBookingStatus({ type: 'success' });
+      if (response.smsBody) {
+        setSmsBody(`${response.smsBody}\n\n[wiadomość wygenerowana przez Wirtualnego Asystenta Dr Koło]`);
+      }
+    } else if (response.bookingError) {
+      setBookingStatus({ type: 'error', message: response.bookingError });
+      if (mobile && response.smsBody) {
+        setSmsBody(`${response.smsBody}\n\n[wiadomość wygenerowana przez Wirtualnego Asystenta Dr Koło]`);
+      }
+    } else if (response.smsBody) {
+      setSmsBody(`${response.smsBody}\n\n[wiadomość wygenerowana przez Wirtualnego Asystenta Dr Koło]`);
+    }
+  };
 
   const handleSend = async () => {
     const text = inputValue.trim();
@@ -51,7 +84,7 @@ export function ChatWidget() {
     try {
       const response = await sendChatMessage(sessionIdRef.current, updatedMessages);
       setMessages((prev) => [...prev, { role: 'assistant', content: response.reply }]);
-      if (response.smsBody) setSmsBody(`${response.smsBody}\n\n[wiadomość wygenerowana przez Wirtualnego Asystenta Dr Koło]`);
+      handleBookingResponse(response);
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -121,10 +154,38 @@ export function ChatWidget() {
                 </div>
               </div>
             )}
-            {smsBody && (
+
+            {bookingStatus?.type === 'success' && (
+              <div className="mx-2 p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-sm space-y-2">
+                <div className="flex items-center gap-2 text-green-700 font-medium">
+                  <CheckCircle className="h-4 w-4" />
+                  Zapytanie zapisane
+                </div>
+                <p className="text-green-800/80 text-xs">
+                  Serwis skontaktuje się z Tobą telefonicznie w celu potwierdzenia terminu.
+                </p>
+              </div>
+            )}
+
+            {bookingStatus?.type === 'error' && !mobile && (
+              <div className="mx-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-sm space-y-2">
+                <p className="text-yellow-800 text-xs">
+                  Nie udało się automatycznie zapisać wizyty. Zadzwoń do serwisu:
+                </p>
+                <a
+                  href={`tel:${SERVICE_PHONE.replace(/\s+/g, '')}`}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-accent text-accent-foreground rounded-full text-xs font-medium hover:bg-accent/90 transition-colors"
+                >
+                  <Phone className="h-3.5 w-3.5" />
+                  511 061 221
+                </a>
+              </div>
+            )}
+
+            {smsBody && mobile && (
               <div className="flex justify-center pt-2">
                 <a
-                  href={`sms:+48511061221?body=${encodeURIComponent(smsBody)}`}
+                  href={`sms:${SERVICE_PHONE}?body=${encodeURIComponent(smsBody)}`}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-full text-sm font-medium hover:bg-accent/90 transition-colors"
                 >
                   <MessageSquare className="h-4 w-4" />
