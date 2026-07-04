@@ -65,15 +65,5 @@
         </address>
       </main>
     </div>
-    <script>
-      // SPA redirect: load the React app from root
-      var l = window.location;
-      if (l.pathname !== '/') {
-        var s = document.createElement('script');
-        s.type = 'module';
-        s.src = '/src/main.tsx';
-        document.body.appendChild(s);
-      }
-    </script>
   </body>
 </html>
