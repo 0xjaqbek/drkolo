@@ -80,12 +80,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const rawReply = completion.choices[0].message.content ?? '';
   const parsed = parseReply(rawReply);
 
-  // Persist the latest user message and assistant reply
+  // Persist the latest user message and assistant reply (sequential inserts for correct ordering)
   const lastUserMessage = messages[messages.length - 1];
-  await supabase.from('chat_messages').insert([
+  await supabase.from('chat_messages').insert(
     { session_id: sessionId, role: lastUserMessage.role, content: lastUserMessage.content },
+  );
+  await supabase.from('chat_messages').insert(
     { session_id: sessionId, role: 'assistant', content: parsed.reply },
-  ]);
+  );
 
   await supabase
     .from('chat_sessions')
