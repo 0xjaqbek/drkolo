@@ -15,6 +15,12 @@ export default defineConfig(() => ({
   plugins: [react()],
   build: {
     rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, "index.html"),
+        cennik: path.resolve(__dirname, "cennik/index.html"),
+        rezerwacja: path.resolve(__dirname, "rezerwacja/index.html"),
+        "polityka-prywatnosci": path.resolve(__dirname, "polityka-prywatnosci/index.html"),
+      },
       output: {
         manualChunks: {
           vendor: ["react", "react-dom", "react-router-dom"],
